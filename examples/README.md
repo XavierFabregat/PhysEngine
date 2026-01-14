@@ -6,7 +6,10 @@ Interactive terminal demonstrations of the core math primitives.
 
 ```bash
 pnpm install
+pnpm build     # Build the library first
 ```
+
+**Note:** Examples import from the built library (`../dist/`), so you must build before running them.
 
 ## Running Examples
 
@@ -57,13 +60,15 @@ pnpm example:swarm
 
 ## How They Work
 
-Each example is a simple TypeScript file that imports core modules directly from `../src/`:
+Each example imports from the built library just like users would:
 
 ```typescript
-import * as Vec2 from '../src/core/Vector2.js';
-import * as Transform from '../src/core/Transform.js';
-import * as AABB from '../src/core/AABB.js';
+import { Vector2, Transform, AABB, math } from '../dist/index.js';
+// Or with aliases:
+import { Vector2 as Vec2 } from '../dist/index.js';
 ```
+
+This demonstrates the actual API that consumers of the library will use.
 
 The examples use:
 - `console.clear()` for animation

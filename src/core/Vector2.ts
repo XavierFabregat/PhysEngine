@@ -276,9 +276,9 @@ export const toString = (v: Vector2): string => `(${v.x}, ${v.y})`;
 // CONSTANTS
 // ============================================================
 
-export const ZERO: Vector2 = { x: 0, y: 0 };
-export const ONE: Vector2 = { x: 1, y: 1 };
-export const UP: Vector2 = { x: 0, y: -1 };
-export const DOWN: Vector2 = { x: 0, y: 1 };
-export const LEFT: Vector2 = { x: -1, y: 0 };
-export const RIGHT: Vector2 = { x: 1, y: 0 };
+export const ZERO: Readonly<Vector2> = Object.freeze({ x: 0, y: 0 });
+export const ONE: Readonly<Vector2> = Object.freeze({ x: 1, y: 1 });
+export const UP: Readonly<Vector2> = Object.freeze({ x: 0, y: -1 });
+export const DOWN: Readonly<Vector2> = Object.freeze({ x: 0, y: 1 });
+export const LEFT: Readonly<Vector2> = Object.freeze({ x: -1, y: 0 });
+export const RIGHT: Readonly<Vector2> = Object.freeze({ x: 1, y: 0 });

@@ -1,7 +1,7 @@
 {
   "name": "physengine",
-  "version": "1.0.0",
-  "description": "A physics engine",
+  "version": "0.1.0-alpha",
+  "description": "A 2D physics engine for games and simulations",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,18 +17,37 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "example": "tsx",
     "example:orbit": "tsx examples/orbit.ts",
     "example:balls": "tsx examples/bouncing-balls.ts",
     "example:swarm": "tsx examples/swarm.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "pnpm build"
   },
-  "keywords": [],
+  "keywords": [
+    "physics",
+    "physics-engine",
+    "2d",
+    "game-development",
+    "simulation",
+    "collision-detection",
+    "vector-math"
+  ],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/PhysEngine"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/PhysEngine/issues"
+  },
+  "homepage": "https://github.com/yourusername/PhysEngine#readme",
   "devDependencies": {
     "@types/node": "^25.0.8",
     "@vitest/ui": "4.0.17",

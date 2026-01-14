@@ -8,7 +8,7 @@
  * Press Ctrl+C to exit.
  */
 
-import * as Transform from '../src/core/Transform.js';
+import { Transform } from '../dist/index.js';
 
 const WIDTH = 80;
 const HEIGHT = 24;

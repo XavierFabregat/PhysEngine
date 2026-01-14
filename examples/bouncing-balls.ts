@@ -7,8 +7,7 @@
  * Press Ctrl+C to exit.
  */
 
-import * as Vec2 from '../src/core/Vector2.js';
-import * as AABB from '../src/core/AABB.js';
+import { Vector2 as Vec2, AABB } from '../dist/index.js';
 
 const WIDTH = 80;
 const HEIGHT = 24;

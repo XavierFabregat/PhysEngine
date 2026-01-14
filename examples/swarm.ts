@@ -7,8 +7,7 @@
  * Press Ctrl+C to exit.
  */
 
-import * as Vec2 from '../src/core/Vector2.js';
-import * as math from '../src/core/math.js';
+import { Vector2 as Vec2, math } from '../dist/index.js';
 
 const WIDTH = 80;
 const HEIGHT = 24;
