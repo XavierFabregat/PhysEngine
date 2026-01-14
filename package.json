@@ -53,6 +53,7 @@
   "homepage": "https://github.com/XavierFabregat/PhysEngine#readme",
   "devDependencies": {
     "@types/node": "^25.0.8",
+    "@vitest/coverage-v8": "4.0.17",
     "@vitest/ui": "4.0.17",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
