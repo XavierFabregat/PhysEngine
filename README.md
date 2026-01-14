@@ -1,10 +1,14 @@
 # PhysEngine
 
+[![CI](https://github.com/XavierFabregat/PhysEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/XavierFabregat/PhysEngine/actions/workflows/ci.yml)
+[![npm version](https://badge.fury.io/js/%40xavifabregat%2Fphysengine.svg)](https://www.npmjs.com/package/@xavifabregat/physengine)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+
 A 2D physics engine for games and simulations, prioritizing simplicity and extensibility.
 
 ## Status: In Development 🚧
 
-**Current Version:** 0.1.0-alpha  
+**Current Version:** 0.1.0  
 **Core Math Layer:** ✅ Complete (293 tests passing)  
 **Physics Simulation:** ⏳ Coming soon
 
@@ -53,13 +57,15 @@ pnpm example:swarm
 
 See [examples/README.md](./examples/README.md) for details.
 
-## Installation (Not Yet Published)
+## Installation
 
-This library is still in early development and not yet published to npm.
-
-To try it out:
 ```bash
-git clone <repo-url>
+npm install @xavifabregat/physengine
+```
+
+Or try it out from source:
+```bash
+git clone https://github.com/XavierFabregat/PhysEngine.git
 cd PhysEngine
 pnpm install
 pnpm build          # Build the library
@@ -69,7 +75,7 @@ pnpm example:orbit  # Try the demos!
 ## Usage
 
 ```typescript
-import { Vector2, Transform, AABB, math } from 'physengine';
+import { Vector2, Transform, AABB, math } from '@xavifabregat/physengine';
 
 // Create and manipulate vectors
 const position = Vector2.create(100, 200);
@@ -112,6 +118,25 @@ pnpm example:orbit
 pnpm example:balls
 pnpm example:swarm
 ```
+
+## Publishing
+
+Automated via GitHub Actions. When you push a version tag:
+
+```bash
+pnpm version patch  # 0.1.0 → 0.1.1
+git push --follow-tags
+```
+
+The workflow automatically:
+1. Runs all tests
+2. Builds the library
+3. Publishes to npm with provenance
+
+**First-time setup required:**
+- Create a granular access token on npmjs.com
+- Add it as `NPM_TOKEN` secret in GitHub repo settings
+- See [.github/README.md](.github/README.md) for detailed instructions
 
 ## Project Structure
 

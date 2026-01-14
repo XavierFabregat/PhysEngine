@@ -1,7 +1,8 @@
 {
-  "name": "physengine",
-  "version": "0.1.0-alpha",
+  "name": "@xavifabregat/physengine",
+  "version": "0.1.0",
   "description": "A 2D physics engine for games and simulations",
+  "author": "Xavier Fabregat <xavi.fabregat.pous@gmail.com>",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -38,16 +39,18 @@
     "collision-detection",
     "vector-math"
   ],
-  "author": "",
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/PhysEngine"
+    "url": "git+https://github.com/XavierFabregat/PhysEngine.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/PhysEngine/issues"
+    "url": "https://github.com/XavierFabregat/PhysEngine/issues"
   },
-  "homepage": "https://github.com/yourusername/PhysEngine#readme",
+  "homepage": "https://github.com/XavierFabregat/PhysEngine#readme",
   "devDependencies": {
     "@types/node": "^25.0.8",
     "@vitest/ui": "4.0.17",
