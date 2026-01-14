@@ -159,7 +159,9 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed workflow and GitHub CLI us
 
 ## Publishing
 
-Automated via GitHub Actions. When you push a version tag:
+Automated via GitHub Actions using **Trusted Publishing** (OpenID Connect).
+
+When you push a version tag:
 
 ```bash
 pnpm version patch  # 0.1.0 → 0.1.1
@@ -169,12 +171,12 @@ git push --follow-tags
 The workflow automatically:
 1. Runs all tests
 2. Builds the library
-3. Publishes to npm with provenance
+3. Publishes to npm with provenance (no secrets needed!)
 
 **First-time setup required:**
-- Create a granular access token on npmjs.com
-- Add it as `NPM_TOKEN` secret in GitHub repo settings
-- See [.github/README.md](.github/README.md) for detailed instructions
+- Do one manual publish: `npm publish --access public`
+- Configure Trusted Publishing on npmjs.com
+- See [.github/README.md](.github/README.md) for detailed setup instructions
 
 ## Project Structure
 
