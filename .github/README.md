@@ -1,5 +1,33 @@
 # GitHub Workflows
 
+## Git Workflow Overview
+
+### Branch Strategy
+
+```
+main (protected)
+  ↑
+  │ PR (when stable)
+  │
+dev (active development)
+  ↑
+  │ PR (for features)
+  │
+feature/xyz (optional)
+```
+
+### Development Cycle
+
+1. **Work on `dev`** - All changes go here first
+2. **PR to `dev`** - If using feature branches
+3. **Test on `dev`** - CI validates changes
+4. **PR `dev` → `main`** - When ready for release
+5. **Tag on `main`** - Auto-publishes to npm
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed workflow.
+
+---
+
 ## CI Workflow (`ci.yml`)
 
 Runs on every push and pull request to `main` or `dev` branches.
@@ -7,6 +35,15 @@ Runs on every push and pull request to `main` or `dev` branches.
 **Tests on:**
 - Node.js 18.x, 20.x, 22.x
 - Runs type checking, tests, and build
+
+**Branch Strategy:**
+- `main` - Production releases only (protected, requires PR)
+- `dev` - Active development (all work happens here)
+
+**When it runs:**
+- Every push to `dev` or `main`
+- Every PR to `dev` or `main`
+- Must pass before merging PRs
 
 ## Publish Workflow (`publish.yml`)
 
@@ -148,5 +185,96 @@ You can still publish manually:
 ```bash
 pnpm build
 npm publish
+```
+
+---
+
+## GitHub CLI Workflow
+
+### Daily Development
+
+```bash
+# Start work on dev
+git checkout dev
+git pull origin dev
+
+# Make changes and commit
+git add .
+git commit -m "feat: add feature"
+git push origin dev
+```
+
+### Using Feature Branches
+
+```bash
+# Create feature branch from dev
+git checkout dev
+git checkout -b feature/my-feature
+
+# Work and commit
+git add .
+git commit -m "feat: implement feature"
+
+# Push and create PR to dev
+git push origin feature/my-feature
+gh pr create --base dev --title "Add my feature"
+
+# View PR status
+gh pr view
+
+# After CI passes, merge
+gh pr merge --squash
+
+# Clean up
+git checkout dev
+git pull origin dev
+git branch -d feature/my-feature
+```
+
+### Release Process
+
+```bash
+# Create release PR (dev → main)
+git checkout dev
+gh pr create \
+  --base main \
+  --head dev \
+  --title "Release v0.2.0" \
+  --body "Release notes..."
+
+# View and merge when ready
+gh pr view
+gh pr merge --merge  # Keep full history
+
+# Tag and publish (triggers automated workflow)
+git checkout main
+git pull origin main
+pnpm version minor  # 0.1.0 → 0.2.0
+git push --follow-tags
+
+# Sync dev with main
+git checkout dev
+git merge main
+git push origin dev
+```
+
+### Useful Commands
+
+```bash
+# View all PRs
+gh pr list
+
+# Check CI status
+gh pr checks
+
+# View PR diff
+gh pr diff
+
+# Review PR
+gh pr review --approve
+gh pr review --comment --body "Looks good!"
+
+# Close without merging
+gh pr close
 ```
 
