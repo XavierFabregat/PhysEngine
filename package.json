@@ -17,6 +17,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "prepublishOnly": "npm run build"
   },
   "keywords": [],
@@ -24,6 +27,8 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^25.0.8",
-    "typescript": "^5.9.3"
+    "@vitest/ui": "4.0.17",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
   }
 }
