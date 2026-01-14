@@ -2,7 +2,7 @@
 
 ## CI Workflow (`ci.yml`)
 
-Runs on every push and pull request to `main` or `develop` branches.
+Runs on every push and pull request to `main` or `dev` branches.
 
 **Tests on:**
 - Node.js 18.x, 20.x, 22.x
