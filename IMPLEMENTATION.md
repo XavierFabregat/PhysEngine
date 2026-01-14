@@ -131,8 +131,12 @@ src/
 │   ├── Drag.ts                # Air resistance
 │   └── Attractor.ts           # Point attractor/repulsor
 │
-├── debug/                     # Development tools
-│   └── DebugDraw.ts           # Visualization interface
+├── debug/                     # Development/debugging tools
+│   ├── DebugRenderer.ts       # Rendering interface (library-agnostic)
+│   ├── debugDraw.ts           # Debug visualization function
+│   └── examples/              # Reference implementations
+│       ├── CanvasRenderer.ts  # Canvas 2D example
+│       └── SVGRenderer.ts     # SVG example
 │
 ├── world/                     # World management
 │   ├── createWorld.ts         # Functional world factory
@@ -220,9 +224,18 @@ Core physics engine with all essential features for 2D game development.
 - [ ] `CollisionResolver` interface + Impulse implementation
 - [ ] `defaultSystems` preset
 
-#### Debug
-- [ ] `DebugRenderer` interface
-- [ ] `debugDraw(world, renderer)` - visualize bodies, AABBs, contacts, constraints
+#### Debug Renderer
+- [ ] `DebugRenderer` interface - library-agnostic rendering contract
+- [ ] `debugDraw(world, renderer, options?)` - visualize physics simulation
+  - Bodies (shapes, outlines)
+  - AABBs (bounding boxes)
+  - Contacts (collision points, normals)
+  - Constraints (springs, rods, pins)
+  - Velocities (direction vectors)
+  - Center of mass markers
+  - Sleep state visualization
+- [ ] Example implementations for Canvas and SVG
+- [ ] Color schemes for different body states (static, dynamic, kinematic, sleeping)
 
 ---
 
@@ -312,10 +325,30 @@ Support for more shape types.
 
 ### Future Considerations (v3+)
 
+#### Performance
 - Multithreading via Web Workers
 - WASM core for performance-critical code
-- 3D extension (separate package)
-- Visual editor / devtools
+
+#### Ecosystem
+- **Renderer Packages** (separate from core)
+  - `@xavifabregat/physengine-canvas` - Full-featured Canvas renderer
+  - `@xavifabregat/physengine-pixi` - Pixi.js integration
+  - `@xavifabregat/physengine-three` - Three.js bridge (2D physics in 3D world)
+  - Community-contributed renderers
+- **Framework Integrations**
+  - `@xavifabregat/physengine-react` - React hooks and components
+  - `@xavifabregat/physengine-vue` - Vue composables
+  - `@xavifabregat/physengine-svelte` - Svelte stores
+- **Developer Tools**
+  - Visual editor / interactive playground
+  - Chrome DevTools extension
+  - VSCode extension for debugging physics
+
+#### Extensions
+- 3D physics engine (separate package)
+- Soft body physics
+- Fluid simulation
+- Cloth simulation
 
 ---
 
@@ -348,6 +381,34 @@ Support for more shape types.
 - Handles stacking well
 - Works with friction naturally
 - Good reference implementations available
+
+### Why No Built-in Renderer?
+
+**Physics and rendering are separate concerns:**
+
+- **Physics** - Invisible calculations (positions, velocities, collisions)
+- **Rendering** - Visual representation (colors, sprites, effects)
+
+**Benefits of separation:**
+- ✅ **Library-agnostic** - Works with Canvas, WebGL, Three.js, Pixi.js, HTML/CSS, or anything
+- ✅ **Tiny core** - No heavy rendering dependencies (keeps package at ~20KB)
+- ✅ **Flexibility** - Users choose their rendering stack
+- ✅ **Server-side** - Run physics headless (multiplayer, simulations)
+- ✅ **Performance** - Can update physics and rendering at different rates
+- ✅ **Tree-shakeable** - Don't bundle rendering code if not needed
+
+**What we provide instead:**
+- `DebugRenderer` interface (v1.0) - Simple contract for visualization
+- Users implement for their library in ~20 lines
+- Separate renderer packages (v3+) - Optional, full-featured renderers
+
+**Industry standard:**
+- Box2D (C++) - No renderer
+- Matter.js - Debug renderer only, no full renderer
+- Rapier (Rust) - Render trait, users implement
+- cannon.js - No renderer
+
+This is the **right approach** - keep physics pure, let users choose how to visualize it.
 
 ---
 
@@ -504,11 +565,13 @@ const world = createWorld({
 
 ### Debug Rendering
 
+The debug renderer is a **simple interface** that users implement for their rendering library. It's designed for development/debugging, not production rendering.
+
 ```typescript
-import { debugDraw } from 'physengine';
+import { debugDraw, DebugRenderer } from 'physengine';
 
 // Implement the renderer interface for your graphics library
-const canvasRenderer = {
+const canvasRenderer: DebugRenderer = {
   drawCircle(x, y, radius, color) {
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
