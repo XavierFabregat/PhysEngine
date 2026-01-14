@@ -1,22 +1,61 @@
 # GitHub Workflows
 
+## Git Workflow Overview
+
+### Branch Strategy
+
+```
+main (protected)
+  ↑
+  │ PR (when stable)
+  │
+dev (active development)
+  ↑
+  │ PR (for features)
+  │
+feature/xyz (optional)
+```
+
+### Development Cycle
+
+1. **Work on `dev`** - All changes go here first
+2. **PR to `dev`** - If using feature branches
+3. **Test on `dev`** - CI validates changes
+4. **PR `dev` → `main`** - When ready for release
+5. **Tag on `main`** - Auto-publishes to npm
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed workflow.
+
+---
+
 ## CI Workflow (`ci.yml`)
 
-Runs on every push and pull request to `main` or `develop` branches.
+Runs on every push and pull request to `main` or `dev` branches.
 
 **Tests on:**
 - Node.js 18.x, 20.x, 22.x
 - Runs type checking, tests, and build
 
+**Branch Strategy:**
+- `main` - Production releases only (protected, requires PR)
+- `dev` - Active development (all work happens here)
+
+**When it runs:**
+- Every push to `dev` or `main`
+- Every PR to `dev` or `main`
+- Must pass before merging PRs
+
 ## Publish Workflow (`publish.yml`)
 
-Automatically publishes to npm when you push a version tag.
+Automatically publishes to npm when you push a version tag using **Trusted Publishing** (OpenID Connect).
 
-**Two methods supported:**
-1. ✅ **Trusted Publishing** (Recommended - more secure, no secrets)
-2. ⚠️ **Access Token** (Fallback - requires manual token management)
+**Why Trusted Publishing?**
+- ✅ No secrets to manage
+- ✅ No token expiration
+- ✅ More secure (cryptographic proof of identity)
+- ✅ No 2FA bypass needed
 
-### Method 1: Trusted Publishing (Recommended)
+### Setup
 
 **Prerequisites:**
 - Package must exist on npm (do first manual publish)
@@ -51,45 +90,11 @@ Automatically publishes to npm when you push a version tag.
    git push --follow-tags
    ```
 
-The workflow uses OpenID Connect (OIDC) - no tokens needed. The `id-token: write` permission handles authentication.
-
----
-
-### Method 2: Access Token (Legacy Fallback)
-
-Only use this if Trusted Publishing doesn't work for you.
-
-1. **Create Granular Access Token on npm**
-   
-   Go to [npmjs.com](https://www.npmjs.com) → Settings → Access Tokens → Generate New Token → **Granular Access Token**
-   
-   **Token Configuration Checklist:**
-   ```
-   ✅ Name: "GitHub Actions - PhysEngine"
-   ✅ Expiration: 365 days (1 year)
-   ✅ Packages and scopes: 
-      • Select "Only select packages and scopes"
-      • Add package: physengine
-   ✅ Permissions: Read and write
-   ✅ Organizations: (leave empty)
-   ✅ IP ranges: (leave empty - GitHub Actions IPs change)
-   ✅ Bypass 2FA: true (REQUIRED if you have 2FA enabled)
-   ```
-   
-   **Why "Bypass 2FA"?**
-   - GitHub Actions can't enter 2FA codes
-   - Token is scoped to one package only (secure)
-   - Token expires after 1 year (forces renewal)
-   
-   ⚠️ Copy the token immediately (shown only once!)
-
-2. **Add to GitHub Secrets**
-   - Repository → Settings → Secrets and variables → Actions
-   - New repository secret
-   - Name: `NPM_TOKEN`
-   - Value: (paste your npm token)
+The workflow uses OpenID Connect (OIDC) - no tokens or secrets needed. The `id-token: write` permission handles authentication.
 
 ### Usage
+
+Once Trusted Publishing is configured, releasing is automatic:
 
 ```bash
 # Update version
@@ -107,39 +112,16 @@ The workflow will:
 3. ✅ Publish to npm with provenance
 4. ❌ Cancel if tests fail
 
-### Token Management
-
-**Important:**
-- Granular tokens can expire (set expiration when creating)
-- You can create up to 1000 tokens
-- Each token can access up to 50 packages/scopes
-- If token expires, workflow will fail → create new token and update GitHub secret
-
-**Security Best Practices:**
-- ✅ Set expiration (forces periodic review)
-- ✅ Enable "Bypass 2FA" for automation
-- ✅ Limit to specific package only
-- ✅ Use read-write (not legacy tokens)
-- ❌ Don't use personal tokens with broad access
-
 ### Troubleshooting
 
-**Publish fails with "403 Forbidden":**
-- Token doesn't have write access → recreate with read-write
-- Package name not in token scope → add `physengine` to token
-- Token expired → create new token, update GitHub secret
+**Publish fails with "403 Forbidden" or "401 Unauthorized":**
+- Trusted Publishing not configured → follow setup steps above
+- Wrong repository/workflow name in trusted publisher config
+- GitHub repo is private → must be public for Trusted Publishing
 
-**Publish fails with "OTP required":**
-- "Bypass 2FA" is `false` → recreate token with bypass enabled
-- Account requires 2FA but token can't bypass → token config issue
-
-**How to update expired token:**
-```bash
-# 1. Create new token on npmjs.com (same settings)
-# 2. Update GitHub secret:
-#    Repo → Settings → Secrets → NPM_TOKEN → Update
-# 3. Next tag push will use new token
-```
+**Publish fails with "404 Not Found":**
+- Package doesn't exist yet → do manual first publish
+- Package name changed → update trusted publisher config on npm
 
 ### Manual Publish
 
@@ -148,5 +130,96 @@ You can still publish manually:
 ```bash
 pnpm build
 npm publish
+```
+
+---
+
+## GitHub CLI Workflow
+
+### Daily Development
+
+```bash
+# Start work on dev
+git checkout dev
+git pull origin dev
+
+# Make changes and commit
+git add .
+git commit -m "feat: add feature"
+git push origin dev
+```
+
+### Using Feature Branches
+
+```bash
+# Create feature branch from dev
+git checkout dev
+git checkout -b feature/my-feature
+
+# Work and commit
+git add .
+git commit -m "feat: implement feature"
+
+# Push and create PR to dev
+git push origin feature/my-feature
+gh pr create --base dev --title "Add my feature"
+
+# View PR status
+gh pr view
+
+# After CI passes, merge
+gh pr merge --squash
+
+# Clean up
+git checkout dev
+git pull origin dev
+git branch -d feature/my-feature
+```
+
+### Release Process
+
+```bash
+# Create release PR (dev → main)
+git checkout dev
+gh pr create \
+  --base main \
+  --head dev \
+  --title "Release v0.2.0" \
+  --body "Release notes..."
+
+# View and merge when ready
+gh pr view
+gh pr merge --merge  # Keep full history
+
+# Tag and publish (triggers automated workflow)
+git checkout main
+git pull origin main
+pnpm version minor  # 0.1.0 → 0.2.0
+git push --follow-tags
+
+# Sync dev with main
+git checkout dev
+git merge main
+git push origin dev
+```
+
+### Useful Commands
+
+```bash
+# View all PRs
+gh pr list
+
+# Check CI status
+gh pr checks
+
+# View PR diff
+gh pr diff
+
+# Review PR
+gh pr review --approve
+gh pr review --comment --body "Looks good!"
+
+# Close without merging
+gh pr close
 ```
 

@@ -100,6 +100,8 @@ const angle = math.degToRad(90); // π/2
 
 ## Development
 
+### Quick Start
+
 ```bash
 # Install dependencies
 pnpm install
@@ -119,9 +121,47 @@ pnpm example:balls
 pnpm example:swarm
 ```
 
+### Git Workflow
+
+We use a **branch-based workflow**:
+
+- **`main`** - Stable releases only (tagged versions published to npm)
+- **`dev`** - Active development (all work happens here)
+
+**Development cycle:**
+```bash
+# Work on dev branch
+git checkout dev
+git pull origin dev
+
+# Make changes, test
+pnpm test:run
+pnpm build
+
+# Commit and push
+git add .
+git commit -m "feat: your feature"
+git push origin dev
+```
+
+**Release cycle:**
+```bash
+# Create PR from dev to main
+gh pr create --base main --head dev --title "Release v0.2.0"
+
+# After merge and CI passes
+git checkout main
+pnpm version minor
+git push --follow-tags  # Auto-publishes to npm via GitHub Actions
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed workflow and GitHub CLI usage.
+
 ## Publishing
 
-Automated via GitHub Actions. When you push a version tag:
+Automated via GitHub Actions using **Trusted Publishing** (OpenID Connect).
+
+When you push a version tag:
 
 ```bash
 pnpm version patch  # 0.1.0 → 0.1.1
@@ -131,12 +171,12 @@ git push --follow-tags
 The workflow automatically:
 1. Runs all tests
 2. Builds the library
-3. Publishes to npm with provenance
+3. Publishes to npm with provenance (no secrets needed!)
 
 **First-time setup required:**
-- Create a granular access token on npmjs.com
-- Add it as `NPM_TOKEN` secret in GitHub repo settings
-- See [.github/README.md](.github/README.md) for detailed instructions
+- Do one manual publish: `npm publish --access public`
+- Configure Trusted Publishing on npmjs.com
+- See [.github/README.md](.github/README.md) for detailed setup instructions
 
 ## Project Structure
 
@@ -190,7 +230,20 @@ ISC
 
 ## Contributing
 
-This project is in early development. Once v1.0 is released, contributions will be welcome!
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for our development workflow.
+
+**Quick summary:**
+- Work on `dev` branch
+- Create PRs using GitHub CLI: `gh pr create --base dev`
+- PR to `main` only for releases
+- Tag on `main` triggers automated npm publish
+
+### Branch Strategy
+
+- **`main`** - Stable releases (protected)
+- **`dev`** - Active development (default branch for work)
+
+For detailed instructions on the git workflow, GitHub CLI commands, and release process, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
