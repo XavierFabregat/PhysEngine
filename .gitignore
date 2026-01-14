@@ -1,4 +1,23 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 *.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
 .claude/
+.cursor/
+
+# Don't ignore examples - they should be in git!
+# examples/ folder is intentionally tracked

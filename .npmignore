@@ -1,0 +1,18 @@
+# Source files (not needed in published package)
+src/
+*.test.ts
+
+# Examples (for development only)
+examples/
+
+# Config files
+tsconfig.json
+.gitignore
+vitest.config.ts
+
+# Documentation
+IMPLEMENTATION.md
+
+# Development
+.cursor/
+

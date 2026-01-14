@@ -20,6 +20,10 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "example": "tsx",
+    "example:orbit": "tsx examples/orbit.ts",
+    "example:balls": "tsx examples/bouncing-balls.ts",
+    "example:swarm": "tsx examples/swarm.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [],
@@ -28,6 +32,7 @@
   "devDependencies": {
     "@types/node": "^25.0.8",
     "@vitest/ui": "4.0.17",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.17"
   }
