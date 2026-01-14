@@ -62,8 +62,34 @@ To try it out:
 git clone <repo-url>
 cd PhysEngine
 pnpm install
-pnpm build
+pnpm build          # Build the library
 pnpm example:orbit  # Try the demos!
+```
+
+## Usage
+
+```typescript
+import { Vector2, Transform, AABB, math } from 'physengine';
+
+// Create and manipulate vectors
+const position = Vector2.create(100, 200);
+const velocity = Vector2.create(5, -3);
+const newPosition = Vector2.add(position, velocity);
+
+// Work with transforms
+const transform = Transform.create(position, Math.PI / 4);
+const worldPoint = Transform.transformPoint(transform, { x: 10, y: 0 });
+
+// Fast collision detection with AABBs
+const box1 = AABB.fromCenter({ x: 50, y: 50 }, { x: 25, y: 25 });
+const box2 = AABB.fromCenter({ x: 70, y: 60 }, { x: 20, y: 20 });
+if (AABB.overlaps(box1, box2)) {
+  console.log('Collision detected!');
+}
+
+// Math utilities
+const interpolated = math.lerp(0, 100, 0.5); // 50
+const angle = math.degToRad(90); // π/2
 ```
 
 ## Development
