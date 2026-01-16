@@ -28,6 +28,7 @@ export type { BodyType as BodyTypeEnum } from './types/BodyType.js';
 export type { Material } from './types/Material.js';
 export type { Shape, CircleShape, RectangleShape, PolygonShape } from './types/Shape.js';
 export type { World } from './types/World.js';
+export type { Integrator } from './types/Integrator.js';
 
 // Body type constants (exported as value)
 export { BodyType } from './types/BodyType.js';
@@ -58,6 +59,14 @@ export {
   clear,
   hasBody,
 } from './world/body.js';
+
+export { step } from './world/step.js';
+
+// ============================================================
+// INTEGRATORS
+// ============================================================
+
+export { VerletIntegrator } from './systems/integrators/Verlet.js';
 
 // ============================================================
 // DEBUG RENDERER

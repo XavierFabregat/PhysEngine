@@ -1,5 +1,6 @@
 import type { Body } from './Body.js';
 import type { Vector2 } from '../core/Vector2.js';
+import type { Integrator } from './Integrator.js';
 
 /**
  * The physics world - container for all bodies and simulation settings.
@@ -26,9 +27,16 @@ export interface World {
   gravity: Vector2;
 
   /**
-   * Accumulated simulation time in seconds (optional).
+   * Accumulated simulation time in seconds.
+   * Updated by step() function.
    * Useful for debugging and deterministic playback.
    */
   time: number;
+
+  /**
+   * Integrator for numerical integration of motion equations.
+   * Pluggable system - can swap Verlet, Euler, RK4, or custom implementations.
+   */
+  integrator: Integrator;
 }
 
