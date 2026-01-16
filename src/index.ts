@@ -27,6 +27,7 @@ export type { Body } from './types/Body.js';
 export type { BodyType as BodyTypeEnum } from './types/BodyType.js';
 export type { Material } from './types/Material.js';
 export type { Shape, CircleShape, RectangleShape, PolygonShape } from './types/Shape.js';
+export type { World } from './types/World.js';
 
 // Body type constants (exported as value)
 export { BodyType } from './types/BodyType.js';
@@ -40,6 +41,23 @@ export type { CircleConfig } from './bodies/createCircle.js';
 
 export { createRectangle } from './bodies/createRectangle.js';
 export type { RectangleConfig } from './bodies/createRectangle.js';
+
+// ============================================================
+// WORLD
+// ============================================================
+
+export { createWorld } from './world/createWorld.js';
+export type { WorldConfig } from './world/createWorld.js';
+
+export {
+  addBody,
+  removeBody,
+  getBody,
+  getBodies,
+  getBodyCount,
+  clear,
+  hasBody,
+} from './world/body.js';
 
 // ============================================================
 // UTILITIES
