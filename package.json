@@ -28,6 +28,7 @@
     "example:orbit": "tsx examples/orbit.ts",
     "example:balls": "tsx examples/bouncing-balls.ts",
     "example:swarm": "tsx examples/swarm.ts",
+    "debug:viewer": "pnpm build && npx serve examples -p 8000",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [

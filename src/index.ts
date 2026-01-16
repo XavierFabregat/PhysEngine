@@ -60,6 +60,16 @@ export {
 } from './world/body.js';
 
 // ============================================================
+// DEBUG RENDERER
+// ============================================================
+
+export type { DebugRenderer, DebugDrawOptions } from './debug/DebugRenderer.js';
+export { debugDraw } from './debug/debugDraw.js';
+
+// Example implementations (reference - users should copy/customize)
+export { CanvasRenderer } from './debug/examples/CanvasRenderer.js';
+
+// ============================================================
 // UTILITIES
 // ============================================================
 

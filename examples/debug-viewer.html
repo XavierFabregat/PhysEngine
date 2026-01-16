@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhysEngine Debug Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      display: flex;
+      gap: 20px;
+      min-height: 100vh;
+      background: #1a1a1a;
+      font-family: 'Courier New', monospace;
+      color: #fff;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #4488ff;
+    }
+
+    #left-panel {
+      flex: 0 0 250px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    #center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      background: #0a0a0a;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      cursor: crosshair;
+    }
+
+    canvas:active {
+      cursor: move;
+    }
+
+    .panel {
+      background: #222;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .panel h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #4488ff;
+      border-bottom: 1px solid #333;
+      padding-bottom: 8px;
+    }
+
+    .panel p {
+      line-height: 1.6;
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    button {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      transition: all 0.2s;
+      width: 100%;
+      margin: 3px 0;
+    }
+
+    button:hover {
+      background: #444;
+      border-color: #666;
+    }
+
+    button:active {
+      background: #555;
+    }
+
+    button.primary {
+      background: #4488ff;
+      border-color: #6699ff;
+    }
+
+    button.primary:hover {
+      background: #5599ff;
+    }
+
+    button.danger {
+      background: #ff4444;
+      border-color: #ff6666;
+    }
+
+    button.danger:hover {
+      background: #ff5555;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0 4px 0;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 5px 0;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 5px;
+    }
+
+    .button-group button {
+      flex: 1;
+    }
+
+    .color-key {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .color-box {
+      width: 16px;
+      height: 16px;
+      border: 2px solid;
+      border-radius: 2px;
+    }
+
+    #selected-body {
+      min-height: 100px;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .hint {
+      color: #888;
+      font-size: 11px;
+      font-style: italic;
+      margin-top: 8px;
+    }
+
+    .value {
+      color: #4488ff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="left-panel">
+    <div class="panel">
+      <h2>⚙️ Controls</h2>
+      
+      <button class="primary" id="add-circle">➕ Add Circle</button>
+      <button class="primary" id="add-rectangle">➕ Add Rectangle</button>
+      
+      <div class="button-group">
+        <button id="clear-dynamic">Clear Dynamic</button>
+        <button class="danger" id="clear-all">Clear All</button>
+      </div>
+      
+      <button id="reset">🔄 Reset Scene</button>
+      
+      <p class="hint">💡 Click a body to select it</p>
+    </div>
+
+    <div class="panel">
+      <h2>🌍 Gravity</h2>
+      
+      <label>X: <span class="value" id="gx-value">0</span></label>
+      <input type="range" id="gx" min="-500" max="500" value="0">
+      
+      <label>Y: <span class="value" id="gy-value">400</span></label>
+      <input type="range" id="gy" min="-500" max="500" value="400">
+      
+      <div class="button-group">
+        <button id="gravity-earth">🌍 Earth</button>
+        <button id="gravity-space">🚀 Space</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>👁️ Display</h2>
+      
+      <label><input type="checkbox" id="showBodies" checked> Bodies</label>
+      <label><input type="checkbox" id="showAABBs"> AABBs</label>
+      <label><input type="checkbox" id="showVelocities"> Velocities</label>
+      <label><input type="checkbox" id="showCenterOfMass"> Center of Mass</label>
+    </div>
+
+    <div class="panel">
+      <h2>📊 Stats</h2>
+      <p><strong>Bodies:</strong> <span class="value" id="bodyCount">0</span></p>
+      <p><strong>Dynamic:</strong> <span class="value" id="dynamicCount">0</span></p>
+      <p><strong>Static:</strong> <span class="value" id="staticCount">0</span></p>
+      <p><strong>Time:</strong> <span class="value" id="time">0.00</span>s</p>
+    </div>
+  </div>
+
+  <div id="center">
+    <h1>⚛️ PhysEngine Debug Viewer</h1>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="panel" style="width: 800px;">
+      <h2>🎯 Selected Body</h2>
+      <div id="selected-body">
+        <p class="hint">Click a body to inspect its properties</p>
+      </div>
+    </div>
+
+    <div class="panel" style="width: 800px;">
+      <h2>🎨 Color Key</h2>
+      <div class="color-key">
+        <div class="color-box" style="border-color: #4488ff;"></div>
+        <span>Dynamic (physics-controlled)</span>
+        <div class="color-box" style="border-color: #888888;"></div>
+        <span>Static (immovable)</span>
+        <div class="color-box" style="border-color: #ff8800;"></div>
+        <span>Kinematic (user-controlled)</span>
+        <div class="color-box" style="border-color: #00ff00;"></div>
+        <span>AABB (bounding box)</span>
+        <div class="color-box" style="border-color: #ff0000;"></div>
+        <span>Velocity vector</span>
+        <div class="color-box" style="border-color: #ff00ff;"></div>
+        <span>Center of mass</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      createWorld,
+      createCircle,
+      createRectangle,
+      addBody,
+      removeBody,
+      getBodyCount,
+      getBodies,
+      BodyType,
+      Vector2,
+      math
+    } from '../dist/index.js';
+    
+    import { CanvasRenderer } from '../dist/debug/examples/CanvasRenderer.js';
+    import { debugDraw } from '../dist/debug/debugDraw.js';
+
+    // Get canvas and create renderer
+    const canvas = document.getElementById('canvas');
+    const renderer = new CanvasRenderer(canvas);
+
+    // Create physics world
+    let world = createWorld({ gravity: { x: 0, y: 400 } });
+    let selectedBody = null;
+
+    // Initialize scene
+    function initializeScene() {
+      world = createWorld({ gravity: { x: 0, y: 400 } });
+      
+      // Balls
+      addBody(world, createCircle({
+        position: { x: 200, y: 150 },
+        radius: 30,
+        velocity: { x: 20, y: 10 }
+      }));
+
+      addBody(world, createCircle({
+        position: { x: 400, y: 100 },
+        radius: 25,
+        velocity: { x: -15, y: 5 }
+      }));
+
+      addBody(world, createCircle({
+        position: { x: 600, y: 175 },
+        radius: 20,
+        velocity: { x: -10, y: 15 }
+      }));
+
+      // Boxes
+      addBody(world, createRectangle({
+        position: { x: 300, y: 300 },
+        width: 60,
+        height: 40,
+        rotation: Math.PI / 6,
+        velocity: { x: 5, y: -5 }
+      }));
+
+      addBody(world, createRectangle({
+        position: { x: 500, y: 350 },
+        width: 50,
+        height: 50,
+        rotation: Math.PI / 4,
+        velocity: { x: -8, y: 8 }
+      }));
+
+      // Floor
+      addBody(world, createRectangle({
+        position: { x: 400, y: 580 },
+        width: 800,
+        height: 40,
+        type: BodyType.STATIC
+      }));
+
+      // Walls
+      addBody(world, createRectangle({
+        position: { x: 20, y: 300 },
+        width: 40,
+        height: 600,
+        type: BodyType.STATIC
+      }));
+
+      addBody(world, createRectangle({
+        position: { x: 780, y: 300 },
+        width: 40,
+        height: 600,
+        type: BodyType.STATIC
+      }));
+
+      // Platform
+      addBody(world, createRectangle({
+        position: { x: 400, y: 450 },
+        width: 150,
+        height: 20,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 50, y: 0 }
+      }));
+
+      selectedBody = null;
+      updateInfo();
+    }
+
+    // Add random circle
+    document.getElementById('add-circle').addEventListener('click', () => {
+      addBody(world, createCircle({
+        position: { 
+          x: math.randomRange(100, 700), 
+          y: math.randomRange(50, 200) 
+        },
+        radius: math.randomRange(15, 40),
+        velocity: {
+          x: math.randomRange(-30, 30),
+          y: math.randomRange(-20, 20)
+        }
+      }));
+      updateInfo();
+      render();
+    });
+
+    // Add random rectangle
+    document.getElementById('add-rectangle').addEventListener('click', () => {
+      addBody(world, createRectangle({
+        position: { 
+          x: math.randomRange(100, 700), 
+          y: math.randomRange(50, 200) 
+        },
+        width: math.randomRange(30, 80),
+        height: math.randomRange(30, 80),
+        rotation: math.randomRange(0, Math.PI * 2),
+        velocity: {
+          x: math.randomRange(-30, 30),
+          y: math.randomRange(-20, 20)
+        }
+      }));
+      updateInfo();
+      render();
+    });
+
+    // Clear dynamic bodies
+    document.getElementById('clear-dynamic').addEventListener('click', () => {
+      world.bodies = world.bodies.filter(b => b.type !== BodyType.DYNAMIC);
+      selectedBody = null;
+      updateInfo();
+      render();
+    });
+
+    // Clear all bodies
+    document.getElementById('clear-all').addEventListener('click', () => {
+      world.bodies = [];
+      selectedBody = null;
+      updateInfo();
+      render();
+    });
+
+    // Reset scene
+    document.getElementById('reset').addEventListener('click', () => {
+      initializeScene();
+      render();
+    });
+
+    // Gravity controls
+    const gxInput = document.getElementById('gx');
+    const gyInput = document.getElementById('gy');
+    const gxValue = document.getElementById('gx-value');
+    const gyValue = document.getElementById('gy-value');
+
+    gxInput.addEventListener('input', (e) => {
+      world.gravity.x = parseFloat(e.target.value);
+      gxValue.textContent = world.gravity.x;
+      render();
+    });
+
+    gyInput.addEventListener('input', (e) => {
+      world.gravity.y = parseFloat(e.target.value);
+      gyValue.textContent = world.gravity.y;
+      render();
+    });
+
+    document.getElementById('gravity-earth').addEventListener('click', () => {
+      world.gravity = { x: 0, y: 400 };
+      gxInput.value = '0';
+      gyInput.value = '400';
+      gxValue.textContent = '0';
+      gyValue.textContent = '400';
+      render();
+    });
+
+    document.getElementById('gravity-space').addEventListener('click', () => {
+      world.gravity = { x: 0, y: 0 };
+      gxInput.value = '0';
+      gyInput.value = '0';
+      gxValue.textContent = '0';
+      gyValue.textContent = '0';
+      render();
+    });
+
+    // Mouse interaction
+    let draggingBody = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Find body under mouse (check in reverse order - top to bottom)
+      for (let i = world.bodies.length - 1; i >= 0; i--) {
+        const body = world.bodies[i];
+        
+        // Simple point-in-AABB test
+        if (mouseX >= body.aabb.min.x && mouseX <= body.aabb.max.x &&
+            mouseY >= body.aabb.min.y && mouseY <= body.aabb.max.y) {
+          
+          if (e.shiftKey) {
+            // Shift+click to remove
+            removeBody(world, body.id);
+            if (selectedBody === body) {
+              selectedBody = null;
+            }
+          } else {
+            // Click to select or start drag
+            selectedBody = body;
+            draggingBody = body;
+            dragOffset = {
+              x: mouseX - body.position.x,
+              y: mouseY - body.position.y
+            };
+          }
+          
+          updateInfo();
+          render();
+          return;
+        }
+      }
+      
+      // Clicked empty space
+      selectedBody = null;
+      updateInfo();
+      render();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!draggingBody) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Update body position
+      draggingBody.position.x = mouseX - dragOffset.x;
+      draggingBody.position.y = mouseY - dragOffset.y;
+      
+      // Update AABB
+      if (draggingBody.shape.type === 'circle') {
+        const r = draggingBody.shape.radius;
+        draggingBody.aabb = {
+          min: { x: draggingBody.position.x - r, y: draggingBody.position.y - r },
+          max: { x: draggingBody.position.x + r, y: draggingBody.position.y + r }
+        };
+      } else if (draggingBody.shape.type === 'rectangle') {
+        const { width, height } = draggingBody.shape;
+        const hw = width / 2;
+        const hh = height / 2;
+        draggingBody.aabb = {
+          min: { x: draggingBody.position.x - hw, y: draggingBody.position.y - hh },
+          max: { x: draggingBody.position.x + hw, y: draggingBody.position.y + hh }
+        };
+      }
+      
+      updateInfo();
+      render();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      draggingBody = null;
+    });
+
+    // Update info panel
+    function updateInfo() {
+      const bodies = getBodies(world);
+      document.getElementById('bodyCount').textContent = getBodyCount(world);
+      document.getElementById('dynamicCount').textContent = 
+        bodies.filter(b => b.type === BodyType.DYNAMIC).length;
+      document.getElementById('staticCount').textContent = 
+        bodies.filter(b => b.type === BodyType.STATIC).length;
+      document.getElementById('time').textContent = world.time.toFixed(2);
+      
+      // Update selected body info
+      const selectedDiv = document.getElementById('selected-body');
+      if (selectedBody) {
+        const mass = selectedBody.mass === Infinity ? '∞' : selectedBody.mass.toFixed(2);
+        const inertia = selectedBody.inertia === Infinity ? '∞' : selectedBody.inertia.toFixed(2);
+        
+        selectedDiv.innerHTML = `
+          <p><strong>ID:</strong> ${selectedBody.id}</p>
+          <p><strong>Type:</strong> ${selectedBody.type}</p>
+          <p><strong>Shape:</strong> ${selectedBody.shape.type}</p>
+          <p><strong>Position:</strong> (${selectedBody.position.x.toFixed(1)}, ${selectedBody.position.y.toFixed(1)})</p>
+          <p><strong>Rotation:</strong> ${(selectedBody.rotation * 180 / Math.PI).toFixed(1)}°</p>
+          <p><strong>Velocity:</strong> (${selectedBody.velocity.x.toFixed(1)}, ${selectedBody.velocity.y.toFixed(1)})</p>
+          <p><strong>Mass:</strong> ${mass} kg</p>
+          <p><strong>Inertia:</strong> ${inertia} kg⋅m²</p>
+          <p><strong>Friction:</strong> ${selectedBody.material.friction}</p>
+          <p><strong>Restitution:</strong> ${selectedBody.material.restitution}</p>
+          <p class="hint" style="margin-top: 10px;">Shift+Click to remove</p>
+        `;
+      } else {
+        selectedDiv.innerHTML = '<p class="hint">Click a body to inspect its properties</p>';
+      }
+    }
+
+    // Render function
+    function render() {
+      const options = {
+        showBodies: document.getElementById('showBodies').checked,
+        showAABBs: document.getElementById('showAABBs').checked,
+        showVelocities: document.getElementById('showVelocities').checked,
+        showCenterOfMass: document.getElementById('showCenterOfMass').checked
+      };
+
+      debugDraw(world, renderer, options);
+      
+      // Highlight selected body
+      if (selectedBody) {
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        
+        if (selectedBody.shape.type === 'circle') {
+          ctx.beginPath();
+          ctx.arc(selectedBody.position.x, selectedBody.position.y, 
+                  selectedBody.shape.radius + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = '#ffff00';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+        } else if (selectedBody.shape.type === 'rectangle') {
+          ctx.translate(selectedBody.position.x, selectedBody.position.y);
+          ctx.rotate(selectedBody.rotation);
+          const { width, height } = selectedBody.shape;
+          ctx.strokeStyle = '#ffff00';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([5, 5]);
+          ctx.strokeRect(-width/2 - 4, -height/2 - 4, width + 8, height + 8);
+        }
+        
+        ctx.restore();
+      }
+    }
+
+    // Re-render when display options change
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+      checkbox.addEventListener('change', render);
+    });
+
+    // Initialize
+    initializeScene();
+    render();
+
+    console.log('✅ PhysEngine Debug Viewer loaded');
+    console.log(`📦 World created with ${getBodyCount(world)} bodies`);
+    console.log('💡 Controls:');
+    console.log('   - Click to select body');
+    console.log('   - Drag to move body');
+    console.log('   - Shift+Click to remove body');
+    console.log('   - Use buttons to add/modify');
+  </script>
+</body>
+</html>
