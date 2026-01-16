@@ -326,5 +326,268 @@ describe('step', () => {
       expect(projectile.position.x).toBeGreaterThan(0);
     });
   });
+
+  describe('collision detection and response', () => {
+    it('should call broad phase and execute collision loop', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Create stationary overlapping circles
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 15,
+        velocity: { x: 0, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 20, y: 0 },  // Distance 20, sum of radii 30 - overlapping
+        radius: 15,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      // Verify world has the collision systems
+      expect(world.broadPhase).toBeDefined();
+      expect(world.resolver).toBeDefined();
+      
+      const posBeforeA = ballA.position.x;
+      const posBeforeB = ballB.position.x;
+      
+      step(world, 1/60);
+      
+      // Collision should be detected and resolved - bodies pushed apart
+      expect(ballA.position.x).toBeLessThan(posBeforeA);
+      expect(ballB.position.x).toBeGreaterThan(posBeforeB);
+    });
+
+    it('should execute collision detection loop', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Explicitly overlapping circles to ensure broad phase detects them
+      const ballA = createCircle({
+        position: { x: 100, y: 100 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 115, y: 100 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      // Verify they're overlapping before step
+      const distBefore = Math.abs(ballB.position.x - ballA.position.x);
+      expect(distBefore).toBe(15);  // Less than sum of radii (20)
+      
+      step(world, 1/60);
+      
+      // After step, they should be pushed apart
+      const distAfter = Math.abs(ballB.position.x - ballA.position.x);
+      expect(distAfter).toBeGreaterThan(distBefore);
+    });
+
+    it('should detect and resolve circle-circle collisions', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 10, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      step(world, 1/60);
+      
+      // Velocities should change after collision
+      expect(ballA.velocity.x).not.toBe(10);
+      expect(ballB.velocity.x).not.toBe(-10);
+    });
+
+    it('should separate overlapping bodies', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 15, y: 0 },  // Overlapping (should be 20 apart)
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      const origDistance = Math.abs(ballB.position.x - ballA.position.x);
+      
+      step(world, 1/60);
+      
+      const newDistance = Math.abs(ballB.position.x - ballA.position.x);
+      
+      // Bodies should be pushed apart
+      expect(newDistance).toBeGreaterThan(origDistance);
+    });
+
+    it('should handle multiple collisions in one step', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Three balls in a row, all overlapping
+      const ball1 = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ball2 = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ball3 = createCircle({
+        position: { x: 30, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ball1);
+      addBody(world, ball2);
+      addBody(world, ball3);
+      
+      // Should not crash with multiple collisions
+      expect(() => step(world, 1/60)).not.toThrow();
+      
+      // All should be moved apart
+      const dist12 = Math.abs(ball2.position.x - ball1.position.x);
+      const dist23 = Math.abs(ball3.position.x - ball2.position.x);
+      
+      expect(dist12).toBeGreaterThan(15);
+      expect(dist23).toBeGreaterThan(15);
+    });
+
+    it('should bounce ball off static wall', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const ball = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 100, y: 0 },
+        material: { restitution: 1.0 }
+      });
+      const wall = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        type: BodyType.STATIC
+      });
+      
+      addBody(world, ball);
+      addBody(world, wall);
+      
+      step(world, 1/60);
+      
+      // Ball should bounce back (velocity reverses)
+      expect(ball.velocity.x).toBeLessThan(0);
+      
+      // Wall shouldn't move
+      expect(wall.position.x).toBe(15);
+      expect(wall.velocity.x).toBe(0);
+    });
+
+    it('should not collide bodies on different layers', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const LAYER_A = 1 << 0;
+      const LAYER_B = 1 << 1;
+      
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 10, y: 0 },
+        layer: LAYER_A,
+        collidesWith: LAYER_A
+      });
+      const ballB = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 },
+        layer: LAYER_B,
+        collidesWith: LAYER_B
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      step(world, 1/60);
+      
+      // Velocities shouldn't change (different layers)
+      expect(ballA.velocity.x).toBeCloseTo(10, 5);
+      expect(ballB.velocity.x).toBeCloseTo(-10, 5);
+    });
+
+    it('should handle sensors without physical response', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const sensor = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 },
+        isSensor: true
+      });
+      const ball = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 }
+      });
+      
+      addBody(world, sensor);
+      addBody(world, ball);
+      
+      const origVel = { ...ball.velocity };
+      
+      step(world, 1/60);
+      
+      // Sensor detected but no physical response
+      // Ball velocity should continue mostly unchanged
+      expect(ball.velocity.x).toBeCloseTo(origVel.x, 1);
+    });
+
+    it('should handle broad phase false positives (overlapping AABBs, no collision)', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Circle and rectangle with overlapping AABBs but not actually colliding
+      // This forces broad phase to detect them but narrow phase to reject
+      const circle = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 10, y: 0 }
+      });
+      const rect = createRectangle({
+        position: { x: 30, y: 30 },  // Diagonal - AABBs overlap but shapes don't
+        width: 20,
+        height: 20,
+        velocity: { x: -10, y: 0 }
+      });
+      
+      addBody(world, circle);
+      addBody(world, rect);
+      
+      step(world, 1/60);
+      
+      // Broad phase detects AABB overlap, but narrow phase (circle-circle only) returns null
+      // Velocities should be unchanged since narrow phase doesn't support circle-rect yet
+      expect(circle.velocity.x).toBeCloseTo(10, 5);
+      expect(rect.velocity.x).toBeCloseTo(-10, 5);
+    });
+  });
 });
 

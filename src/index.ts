@@ -69,7 +69,7 @@ export { step } from './world/step.js';
 export { VerletIntegrator } from './systems/integrators/Verlet.js';
 
 // ============================================================
-// COLLISION DETECTION
+// COLLISION DETECTION & RESPONSE
 // ============================================================
 
 // Broad phase
@@ -77,6 +77,9 @@ export { BruteForceBroadPhase } from './systems/broadphase/BruteForce.js';
 
 // Narrow phase
 export { detectCircleCircle } from './systems/narrowphase/circleCircle.js';
+
+// Resolvers
+export { ImpulseResolver } from './systems/resolvers/ImpulseResolver.js';
 
 // ============================================================
 // DEBUG RENDERER

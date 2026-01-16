@@ -2,6 +2,7 @@ import type { World } from '../types/World.js';
 import type { Body } from '../types/Body.js';
 import * as AABB from '../core/AABB.js';
 import * as Transform from '../core/Transform.js';
+import { detectCircleCircle } from '../systems/narrowphase/circleCircle.js';
 
 /**
  * Advances the physics simulation by one time step.
@@ -9,12 +10,13 @@ import * as Transform from '../core/Transform.js';
  * This is the main simulation loop function. Call this every frame
  * to update the physics world.
  * 
- * Current implementation:
- * 1. Integrates all bodies (updates positions/velocities)
- * 2. Updates AABBs for broad-phase collision detection
- * 3. Increments world time
- * 
- * Future: Will add collision detection and response between steps 1 and 2.
+ * Physics pipeline:
+ * 1. Integration - Update positions/velocities from forces
+ * 2. AABB Update - Update bounding boxes for collision detection
+ * 3. Broad Phase - Find potentially colliding pairs (AABB overlap)
+ * 4. Narrow Phase - Precise collision detection (geometry-based)
+ * 5. Collision Response - Apply impulses and position correction
+ * 6. Time Increment - Update world time
  * 
  * @param world - The physics world to simulate
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
@@ -41,8 +43,26 @@ export const step = (world: World, dt: number): void => {
     updateBodyAABB(body);
   }
 
-  // 3. TODO: Collision detection (broad + narrow phase)
-  // 4. TODO: Collision response (impulses)
+  // 3. Broad Phase - Find potentially colliding pairs
+  const pairs = world.broadPhase.getPairs(world.bodies);
+
+  // 4. Narrow Phase + Collision Response
+  for (const [indexA, indexB] of pairs) {
+    const bodyA = world.bodies[indexA];
+    const bodyB = world.bodies[indexB];
+
+    // Type guard - should never happen
+    if (!bodyA || !bodyB) continue;
+
+    // Narrow phase - precise collision detection
+    // Currently only supports circle-circle
+    const contact = detectCircleCircle(bodyA, bodyB);
+
+    // If collision detected, resolve it
+    if (contact) {
+      world.resolver.resolve(bodyA, bodyB, contact);
+    }
+  }
 
   // 5. Increment simulation time
   world.time += dt;

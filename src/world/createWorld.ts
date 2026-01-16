@@ -1,7 +1,11 @@
 import type { World } from '../types/World.js';
 import type { Vector2 } from '../core/Vector2.js';
 import type { Integrator } from '../types/Integrator.js';
+import type { BroadPhase } from '../types/BroadPhase.js';
+import type { CollisionResolver } from '../types/CollisionResolver.js';
 import { VerletIntegrator } from '../systems/integrators/Verlet.js';
+import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce.js';
+import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver.js';
 
 /**
  * Configuration for creating a physics world.
@@ -23,15 +27,40 @@ export interface WorldConfig {
    * - RK4Integrator: Accurate, expensive (future)
    */
   integrator?: Integrator;
+
+  /**
+   * Broad phase collision detection system.
+   * Default: BruteForceBroadPhase (simple O(n²), good for <200 bodies)
+   * 
+   * Swap for better performance:
+   * - BruteForceBroadPhase: Simple, <200 bodies (default)
+   * - SpatialHashBroadPhase: Fast, >200 bodies (future)
+   * - QuadTreeBroadPhase: Dynamic spatial partitioning (future)
+   */
+  broadPhase?: BroadPhase;
+
+  /**
+   * Collision resolver for collision response.
+   * Default: ImpulseResolver (industry standard)
+   * 
+   * Swap for different behavior:
+   * - ImpulseResolver: Accurate, handles friction well (default)
+   * - PositionResolver: Simple, good for simple games (future)
+   * - IterativeResolver: More accurate, slower (future)
+   */
+  resolver?: CollisionResolver;
 }
 
 /**
- * Default world configuration.
+ * Default world configuration factory.
+ * Creates new instances to avoid sharing between worlds.
  */
-const DEFAULT_CONFIG: Required<WorldConfig> = {
+const getDefaultConfig = (): Required<WorldConfig> => ({
   gravity: { x: 0, y: 400 },
   integrator: new VerletIntegrator(),
-};
+  broadPhase: new BruteForceBroadPhase(),
+  resolver: new ImpulseResolver(),
+});
 
 /**
  * Creates a new physics world.
@@ -56,15 +85,21 @@ const DEFAULT_CONFIG: Required<WorldConfig> = {
  * });
  */
 export const createWorld = (config: WorldConfig = {}): World => {
+  const defaults = getDefaultConfig();
+  
   // Shallow-copy gravity to avoid sharing the default config object
-  const gravity = config.gravity ?? { ...DEFAULT_CONFIG.gravity };
-  const integrator = config.integrator ?? DEFAULT_CONFIG.integrator;
+  const gravity = config.gravity ?? { ...defaults.gravity };
+  const integrator = config.integrator ?? defaults.integrator;
+  const broadPhase = config.broadPhase ?? defaults.broadPhase;
+  const resolver = config.resolver ?? defaults.resolver;
 
   return {
     bodies: [],
     gravity,
     time: 0,
     integrator,
+    broadPhase,
+    resolver,
   };
 };
 

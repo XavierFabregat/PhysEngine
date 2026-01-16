@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from './createWorld';
 import { VerletIntegrator } from '../systems/integrators/Verlet';
+import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce';
+import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
 
 describe('createWorld', () => {
   describe('basic creation', () => {
@@ -129,6 +131,55 @@ describe('createWorld', () => {
       const world = createWorld({ integrator: customIntegrator });
       
       expect(world.integrator).toBe(customIntegrator);
+    });
+
+    it('should not share default integrator between worlds', () => {
+      const world1 = createWorld();
+      const world2 = createWorld();
+      
+      expect(world1.integrator).not.toBe(world2.integrator);
+    });
+  });
+
+  describe('collision system configuration', () => {
+    it('should use default BruteForce broad phase', () => {
+      const world = createWorld();
+      
+      expect(world.broadPhase).toBeInstanceOf(BruteForceBroadPhase);
+    });
+
+    it('should use default Impulse resolver', () => {
+      const world = createWorld();
+      
+      expect(world.resolver).toBeInstanceOf(ImpulseResolver);
+    });
+
+    it('should accept custom broad phase', () => {
+      const customBroadPhase = new BruteForceBroadPhase();
+      const world = createWorld({ broadPhase: customBroadPhase });
+      
+      expect(world.broadPhase).toBe(customBroadPhase);
+    });
+
+    it('should accept custom resolver', () => {
+      const customResolver = new ImpulseResolver();
+      const world = createWorld({ resolver: customResolver });
+      
+      expect(world.resolver).toBe(customResolver);
+    });
+
+    it('should not share default broad phase between worlds', () => {
+      const world1 = createWorld();
+      const world2 = createWorld();
+      
+      expect(world1.broadPhase).not.toBe(world2.broadPhase);
+    });
+
+    it('should not share default resolver between worlds', () => {
+      const world1 = createWorld();
+      const world2 = createWorld();
+      
+      expect(world1.resolver).not.toBe(world2.resolver);
     });
   });
 });

@@ -1,6 +1,8 @@
 import type { Body } from './Body.js';
 import type { Vector2 } from '../core/Vector2.js';
 import type { Integrator } from './Integrator.js';
+import type { BroadPhase } from './BroadPhase.js';
+import type { CollisionResolver } from './CollisionResolver.js';
 
 /**
  * The physics world - container for all bodies and simulation settings.
@@ -38,5 +40,19 @@ export interface World {
    * Pluggable system - can swap Verlet, Euler, RK4, or custom implementations.
    */
   integrator: Integrator;
+
+  /**
+   * Broad phase collision detection system.
+   * Quickly filters body pairs to find potential collisions using AABB overlap.
+   * Pluggable system - can swap BruteForce, SpatialHash, QuadTree, etc.
+   */
+  broadPhase: BroadPhase;
+
+  /**
+   * Collision resolver for collision response.
+   * Handles what happens after collision detection (bouncing, friction, separation).
+   * Pluggable system - can swap Impulse, Position, or custom resolvers.
+   */
+  resolver: CollisionResolver;
 }
 
