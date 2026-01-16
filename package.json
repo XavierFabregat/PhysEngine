@@ -1,6 +1,6 @@
 {
   "name": "@xavifabregat/physengine",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A 2D physics engine for games and simulations",
   "author": "Xavier Fabregat <xavi.fabregat.pous@gmail.com>",
   "type": "module",
