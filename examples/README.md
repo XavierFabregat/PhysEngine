@@ -1,6 +1,6 @@
 # PhysEngine Examples
 
-Interactive terminal demonstrations of the core math primitives.
+Interactive demonstrations of PhysEngine features.
 
 ## Prerequisites
 
@@ -10,6 +10,26 @@ pnpm build     # Build the library first
 ```
 
 **Note:** Examples import from the built library (`../dist/`), so you must build before running them.
+
+## Browser Examples
+
+### 🎨 Debug Viewer
+Visual debug renderer for physics bodies:
+
+```bash
+pnpm build
+open examples/debug-viewer.html
+```
+
+**Features:**
+- Visualize bodies (circles, rectangles)
+- Toggle AABBs, velocities, center of mass
+- Color-coded by body type (static/dynamic/kinematic)
+- Interactive controls
+
+This demonstrates the `DebugRenderer` interface and `debugDraw` function.
+
+## Terminal Examples
 
 ## Running Examples
 
