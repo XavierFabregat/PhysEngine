@@ -179,6 +179,8 @@
     <div class="panel">
       <h2>⚙️ Controls</h2>
       
+      <button class="primary" id="play-pause">▶️ Play Physics</button>
+      
       <button class="primary" id="add-circle">➕ Add Circle</button>
       <button class="primary" id="add-rectangle">➕ Add Rectangle</button>
       
@@ -189,7 +191,8 @@
       
       <button id="reset">🔄 Reset Scene</button>
       
-      <p class="hint">💡 Click a body to select it</p>
+      <p class="hint">💡 Click body to select</p>
+      <p class="hint">⏯️ Space to play/pause</p>
     </div>
 
     <div class="panel">
@@ -278,6 +281,7 @@
       removeBody,
       getBodyCount,
       getBodies,
+      step,
       BodyType,
       Vector2,
       Transform,
@@ -295,10 +299,37 @@
     // Create physics world
     let world = createWorld({ gravity: { x: 0, y: 400 } });
     let selectedBody = null;
+    let isPlaying = false;
+    let animationId = null;
+
+    // Animation loop
+    function animate() {
+      if (isPlaying) {
+        step(world, 1/60);  // Physics simulation!
+      }
+      
+      updateInfo();
+      render();
+      
+      animationId = requestAnimationFrame(animate);
+    }
+
+    // Play/Pause controls
+    function togglePlayPause() {
+      isPlaying = !isPlaying;
+      const button = document.getElementById('play-pause');
+      button.textContent = isPlaying ? '⏸️ Pause Physics' : '▶️ Play Physics';
+      button.classList.toggle('primary', !isPlaying);
+    }
+
+    document.getElementById('play-pause').addEventListener('click', togglePlayPause);
 
     // Initialize scene
     function initializeScene() {
       world = createWorld({ gravity: { x: 0, y: 400 } });
+      isPlaying = false;
+      document.getElementById('play-pause').textContent = '▶️ Play Physics';
+      document.getElementById('play-pause').classList.add('primary');
       
       // Balls
       addBody(world, createCircle({
@@ -499,8 +530,15 @@
       render();
     });
 
-    // Keyboard controls for rotation
+    // Keyboard controls for rotation and other shortcuts
     document.addEventListener('keydown', (e) => {
+      // Handle play/pause first
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        togglePlayPause();
+        return;
+      }
+      
       if (!selectedBody) return;
       
       if (e.key === 'q' || e.key === 'Q') {
@@ -700,24 +738,20 @@
       }
     }
 
-    // Re-render when display options change
-    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-      checkbox.addEventListener('change', render);
-    });
-
-    // Initialize
+    // Initialize and start
     initializeScene();
-    render();
+    animate();  // Start animation loop
 
     console.log('✅ PhysEngine Debug Viewer loaded');
     console.log(`📦 World created with ${getBodyCount(world)} bodies`);
     console.log('💡 Controls:');
-    console.log('   - Click to select body');
-    console.log('   - Drag to move body');
-    console.log('   - Q/E to rotate selected body');
-    console.log('   - R to reset rotation');
-    console.log('   - Shift+Click to remove body');
-    console.log('   - Use buttons to add/modify');
+    console.log('   - Space: Play/Pause physics');
+    console.log('   - Click: Select body');
+    console.log('   - Drag: Move body');
+    console.log('   - Q/E: Rotate selected body');
+    console.log('   - R: Reset rotation');
+    console.log('   - Shift+Click: Remove body');
+    console.log('🎮 Press Space or click Play to start physics simulation!');
   </script>
 </body>
 </html>
