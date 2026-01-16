@@ -216,6 +216,20 @@
       <label><input type="checkbox" id="showCenterOfMass"> Center of Mass</label>
     </div>
 
+    <div class="panel" id="rotation-panel" style="display: none;">
+      <h2>🔄 Rotate Selected</h2>
+      
+      <label>Angle: <span class="value" id="rotation-value">0</span>°</label>
+      <input type="range" id="rotation-slider" min="0" max="360" value="0">
+      
+      <div class="button-group">
+        <button id="rotate-left">⬅️ -15°</button>
+        <button id="rotate-right">➡️ +15°</button>
+      </div>
+      
+      <p class="hint">💡 Use Q/E keys to rotate</p>
+    </div>
+
     <div class="panel">
       <h2>📊 Stats</h2>
       <p><strong>Bodies:</strong> <span class="value" id="bodyCount">0</span></p>
@@ -266,6 +280,8 @@
       getBodies,
       BodyType,
       Vector2,
+      Transform,
+      AABB,
       math
     } from '../dist/index.js';
     
@@ -450,6 +466,64 @@
       render();
     });
 
+    // Rotation controls
+    document.getElementById('rotation-slider').addEventListener('input', (e) => {
+      if (!selectedBody) return;
+      
+      const degrees = parseFloat(e.target.value);
+      selectedBody.rotation = (degrees * Math.PI / 180);
+      
+      // Update AABB for rotated rectangles
+      updateBodyAABB(selectedBody);
+      
+      document.getElementById('rotation-value').textContent = degrees.toFixed(1);
+      updateInfo();
+      render();
+    });
+
+    document.getElementById('rotate-left').addEventListener('click', () => {
+      if (!selectedBody) return;
+      
+      selectedBody.rotation -= 15 * Math.PI / 180;
+      updateBodyAABB(selectedBody);
+      updateInfo();
+      render();
+    });
+
+    document.getElementById('rotate-right').addEventListener('click', () => {
+      if (!selectedBody) return;
+      
+      selectedBody.rotation += 15 * Math.PI / 180;
+      updateBodyAABB(selectedBody);
+      updateInfo();
+      render();
+    });
+
+    // Keyboard controls for rotation
+    document.addEventListener('keydown', (e) => {
+      if (!selectedBody) return;
+      
+      if (e.key === 'q' || e.key === 'Q') {
+        e.preventDefault();
+        selectedBody.rotation -= 5 * Math.PI / 180;
+        updateBodyAABB(selectedBody);
+        updateInfo();
+        render();
+      } else if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        selectedBody.rotation += 5 * Math.PI / 180;
+        updateBodyAABB(selectedBody);
+        updateInfo();
+        render();
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        selectedBody.rotation = 0;
+        updateBodyAABB(selectedBody);
+        updateInfo();
+        render();
+      }
+    });
+
     // Mouse interaction
     let draggingBody = null;
     let dragOffset = { x: 0, y: 0 };
@@ -507,21 +581,7 @@
       draggingBody.position.y = mouseY - dragOffset.y;
       
       // Update AABB
-      if (draggingBody.shape.type === 'circle') {
-        const r = draggingBody.shape.radius;
-        draggingBody.aabb = {
-          min: { x: draggingBody.position.x - r, y: draggingBody.position.y - r },
-          max: { x: draggingBody.position.x + r, y: draggingBody.position.y + r }
-        };
-      } else if (draggingBody.shape.type === 'rectangle') {
-        const { width, height } = draggingBody.shape;
-        const hw = width / 2;
-        const hh = height / 2;
-        draggingBody.aabb = {
-          min: { x: draggingBody.position.x - hw, y: draggingBody.position.y - hh },
-          max: { x: draggingBody.position.x + hw, y: draggingBody.position.y + hh }
-        };
-      }
+      updateBodyAABB(draggingBody);
       
       updateInfo();
       render();
@@ -530,6 +590,32 @@
     canvas.addEventListener('mouseup', () => {
       draggingBody = null;
     });
+
+    // Update AABB for a body (handles rotation)
+    function updateBodyAABB(body) {
+      if (body.shape.type === 'circle') {
+        const r = body.shape.radius;
+        body.aabb = {
+          min: { x: body.position.x - r, y: body.position.y - r },
+          max: { x: body.position.x + r, y: body.position.y + r }
+        };
+      } else if (body.shape.type === 'rectangle') {
+        const { width, height, vertices } = body.shape;
+        
+        if (body.rotation === 0) {
+          const hw = width / 2;
+          const hh = height / 2;
+          body.aabb = {
+            min: { x: body.position.x - hw, y: body.position.y - hh },
+            max: { x: body.position.x + hw, y: body.position.y + hh }
+          };
+        } else {
+          const transform = Transform.create(body.position, body.rotation);
+          const worldVertices = vertices.map(v => Transform.transformPoint(transform, v));
+          body.aabb = AABB.fromPoints(worldVertices);
+        }
+      }
+    }
 
     // Update info panel
     function updateInfo() {
@@ -540,6 +626,17 @@
       document.getElementById('staticCount').textContent = 
         bodies.filter(b => b.type === BodyType.STATIC).length;
       document.getElementById('time').textContent = world.time.toFixed(2);
+      
+      // Show/hide rotation panel
+      const rotationPanel = document.getElementById('rotation-panel');
+      if (selectedBody) {
+        rotationPanel.style.display = 'block';
+        const rotationDegrees = (selectedBody.rotation * 180 / Math.PI) % 360;
+        document.getElementById('rotation-slider').value = rotationDegrees;
+        document.getElementById('rotation-value').textContent = rotationDegrees.toFixed(1);
+      } else {
+        rotationPanel.style.display = 'none';
+      }
       
       // Update selected body info
       const selectedDiv = document.getElementById('selected-body');
@@ -558,7 +655,7 @@
           <p><strong>Inertia:</strong> ${inertia} kg⋅m²</p>
           <p><strong>Friction:</strong> ${selectedBody.material.friction}</p>
           <p><strong>Restitution:</strong> ${selectedBody.material.restitution}</p>
-          <p class="hint" style="margin-top: 10px;">Shift+Click to remove</p>
+          <p class="hint" style="margin-top: 10px;">Q/E to rotate • R to reset • Shift+Click to remove</p>
         `;
       } else {
         selectedDiv.innerHTML = '<p class="hint">Click a body to inspect its properties</p>';
@@ -617,6 +714,8 @@
     console.log('💡 Controls:');
     console.log('   - Click to select body');
     console.log('   - Drag to move body');
+    console.log('   - Q/E to rotate selected body');
+    console.log('   - R to reset rotation');
     console.log('   - Shift+Click to remove body');
     console.log('   - Use buttons to add/modify');
   </script>
