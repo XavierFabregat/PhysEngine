@@ -5,6 +5,7 @@ import { createMaterial } from '../types/Material.js';
 import * as AABB from '../core/AABB.js';
 import * as Transform from '../core/Transform.js';
 import { calculateRectangleMass, calculateRectangleInertia } from './utils.js';
+import { generateBodyId } from './idGenerator.js';
 
 /**
  * Configuration for creating a rectangle body.
@@ -49,16 +50,6 @@ export interface RectangleConfig {
   /** Custom user data */
   userData?: unknown;
 }
-
-let nextBodyId = 0;
-
-/**
- * Generates a unique body ID.
- * @returns A unique string identifier
- */
-const generateId = (): string => {
-  return `body_${nextBodyId++}`;
-};
 
 /**
  * Creates vertices for a rectangle in local space (centered at origin).
@@ -169,7 +160,7 @@ export const createRectangle = (config: RectangleConfig): Body => {
   };
 
   return {
-    id: generateId(),
+    id: generateBodyId(),
     type,
     position,
     rotation,
@@ -193,12 +184,6 @@ export const createRectangle = (config: RectangleConfig): Body => {
   };
 };
 
-/**
- * Resets the body ID counter.
- * Useful for deterministic testing.
- * @internal
- */
-export const resetBodyIdCounter = (): void => {
-  nextBodyId = 0;
-};
+// Re-export for tests
+export { resetBodyIdCounter } from './idGenerator.js';
 

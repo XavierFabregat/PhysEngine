@@ -4,6 +4,7 @@ import { BodyType } from '../types/BodyType.js';
 import { createMaterial } from '../types/Material.js';
 import * as AABB from '../core/AABB.js';
 import { calculateCircleMass, calculateCircleInertia } from './utils.js';
+import { generateBodyId } from './idGenerator.js';
 
 /**
  * Configuration for creating a circle body.
@@ -45,16 +46,6 @@ export interface CircleConfig {
   /** Custom user data */
   userData?: unknown;
 }
-
-let nextBodyId = 0;
-
-/**
- * Generates a unique body ID.
- * @returns A unique string identifier
- */
-const generateId = (): string => {
-  return `body_${nextBodyId++}`;
-};
 
 /**
  * Creates a circle-shaped rigid body.
@@ -117,7 +108,7 @@ export const createCircle = (config: CircleConfig): Body => {
   };
 
   return {
-    id: generateId(),
+    id: generateBodyId(),
     type,
     position,
     rotation,
@@ -141,12 +132,6 @@ export const createCircle = (config: CircleConfig): Body => {
   };
 };
 
-/**
- * Resets the body ID counter.
- * Useful for deterministic testing.
- * @internal
- */
-export const resetBodyIdCounter = (): void => {
-  nextBodyId = 0;
-};
+// Re-export for tests
+export { resetBodyIdCounter } from './idGenerator.js';
 
