@@ -19,13 +19,15 @@ export interface Material {
   restitution: number;
 
   /**
-   * Material density in kg/m².
-   * Used to calculate mass from shape area.
-   * Typical values:
-   * - Wood: ~500
-   * - Plastic: ~900
-   * - Rock: ~2000
-   * - Metal: ~7000
+   * Mass per unit area, in world units (pixels² by default).
+   * Used to calculate mass from shape area: mass = area × density.
+   * Only ratios between bodies matter for collisions, so pick a relative scale.
+   * Suggested relative values (default = 1):
+   * - Light (foam, wood): 0.3-0.7
+   * - Medium (plastic, water): ~1
+   * - Heavy (rock): ~2.5
+   * - Very heavy (metal): ~8
+   * Must be > 0 for dynamic bodies.
    */
   density: number;
 }
@@ -36,7 +38,7 @@ export interface Material {
 export const DEFAULT_MATERIAL: Readonly<Material> = Object.freeze({
   friction: 0.3,
   restitution: 0.2,
-  density: 1000,
+  density: 1,
 });
 
 /**

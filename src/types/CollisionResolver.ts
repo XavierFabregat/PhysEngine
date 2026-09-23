@@ -15,7 +15,7 @@ import type { Contact } from './Contact.js';
  * 
  * Different implementations offer different trade-offs:
  * - ImpulseResolver: Industry standard, handles friction well
- * - PositionResolver: Simpler, good for Verlet integration
+ * - PositionResolver: Simpler, position-based (PBD-style)
  * - IterativeResolver: More accurate, solves contacts multiple times
  */
 export interface CollisionResolver {

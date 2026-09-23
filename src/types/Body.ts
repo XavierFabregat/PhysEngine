@@ -7,8 +7,14 @@ import type { BodyType } from './BodyType.js';
 /**
  * A rigid body in the physics world.
  * 
- * Bodies are immutable data structures (functional approach).
- * Use functions to create and manipulate bodies, don't mutate directly.
+ * Bodies are plain mutable data objects: the world's `step()` updates
+ * position, velocity, rotation, force and AABB in place every frame (for
+ * performance). The vector values stored on a body (position, velocity, ...)
+ * are replaced rather than mutated by the engine, so a vector you read from
+ * a body is a stable snapshot.
+ *
+ * Coordinates are y-down screen space in arbitrary world units (pixels by
+ * default): +x is right, +y is down.
  */
 export interface Body {
   // ============================================================
@@ -35,14 +41,17 @@ export interface Body {
   /** Position of center of mass in world space */
   position: Vector2;
 
-  /** Rotation angle in radians (counter-clockwise from positive x-axis) */
+  /**
+   * Rotation angle in radians. Positive rotates +x toward +y, which is
+   * clockwise on a y-down screen (counter-clockwise in y-up math axes).
+   */
   rotation: number;
 
   // ============================================================
   // LINEAR MOTION
   // ============================================================
 
-  /** Linear velocity in m/s */
+  /** Linear velocity in world units per second */
   velocity: Vector2;
 
   /** Accumulated forces for this frame (reset each step) */
@@ -52,7 +61,7 @@ export interface Body {
   // ANGULAR MOTION
   // ============================================================
 
-  /** Angular velocity in rad/s (positive = counter-clockwise) */
+  /** Angular velocity in rad/s (positive = +x toward +y, clockwise on screen) */
   angularVelocity: number;
 
   /** Accumulated torque for this frame (reset each step) */
@@ -63,7 +72,7 @@ export interface Body {
   // ============================================================
 
   /**
-   * Mass in kg.
+   * Mass (area × density, in world mass units).
    * - Dynamic bodies: calculated from shape area × density
    * - Static/kinematic: Infinity
    */
@@ -76,7 +85,7 @@ export interface Body {
   invMass: number;
 
   /**
-   * Rotational inertia (moment of inertia) in kg⋅m².
+   * Rotational inertia (moment of inertia) about the center of mass.
    * Resistance to angular acceleration.
    * - Dynamic bodies: calculated from shape
    * - Static/kinematic: Infinity
@@ -129,6 +138,7 @@ export interface Body {
 
   /**
    * If true, this body detects collisions but doesn't respond to them.
+   * Sensors obey the same layer/mask filtering as other bodies.
    * Useful for: trigger zones, pickups, area detectors.
    */
   isSensor: boolean;
@@ -169,11 +179,9 @@ export const isKinematic = (body: Body): boolean => body.type === 'kinematic';
 /**
  * Helper to check if two bodies should collide based on filtering.
  * Returns true if body A's layer matches body B's collidesWith mask AND vice versa.
+ * Applies to sensors too: `isSensor` only changes the response, not the filter.
  */
 export const shouldCollide = (bodyA: Body, bodyB: Body): boolean => {
-  // Check if either is a sensor (sensors always detect)
-  if (bodyA.isSensor || bodyB.isSensor) return true;
-
   // Check layer filtering (bidirectional)
   return (
     (bodyA.layer & bodyB.collidesWith) !== 0 &&

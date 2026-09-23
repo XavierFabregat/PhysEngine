@@ -38,16 +38,37 @@ describe('World Body Management', () => {
       expect(world.bodies[2]).toBe(body3);
     });
 
-    it('should allow adding same body multiple times (no duplicate check)', () => {
+    it('should reject adding the same body twice', () => {
       const world = createWorld();
       const body = createCircle({ radius: 10 });
       
       addBody(world, body);
-      addBody(world, body);
       
-      expect(world.bodies.length).toBe(2);
-      expect(world.bodies[0]).toBe(body);
-      expect(world.bodies[1]).toBe(body);
+      expect(() => addBody(world, body)).toThrow(/already in the world/);
+      expect(world.bodies.length).toBe(1);
+    });
+
+    it('should reject a different body with a duplicate ID', () => {
+      const world = createWorld();
+      const body = createCircle({ radius: 10 });
+      addBody(world, body);
+
+      resetCircleId();
+      const clash = createCircle({ radius: 5 });
+
+      expect(clash.id).toBe(body.id);
+      expect(() => addBody(world, clash)).toThrow(/already in the world/);
+    });
+
+    it('should allow re-adding a body after it was removed', () => {
+      const world = createWorld();
+      const body = createCircle({ radius: 10 });
+
+      addBody(world, body);
+      removeBody(world, body.id);
+      addBody(world, body);
+
+      expect(world.bodies).toEqual([body]);
     });
 
     it('should mutate the world', () => {

@@ -1,0 +1,90 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { debugDraw } from './debugDraw';
+import type { DebugRenderer } from './DebugRenderer';
+import { createWorld } from '../world/createWorld';
+import { addBody } from '../world/body';
+import { createCircle, resetBodyIdCounter } from '../bodies/createCircle';
+import { createRectangle } from '../bodies/createRectangle';
+
+type Call = [method: string, ...args: unknown[]];
+
+const createRecorder = (withText = true): DebugRenderer & { calls: Call[] } => {
+  const calls: Call[] = [];
+  const record = (method: string) => (...args: unknown[]) => {
+    calls.push([method, ...args]);
+  };
+  return {
+    calls,
+    clear: record('clear'),
+    drawCircle: record('drawCircle'),
+    drawRect: record('drawRect'),
+    drawPolygon: record('drawPolygon'),
+    drawLine: record('drawLine'),
+    drawPoint: record('drawPoint'),
+    ...(withText ? { drawText: record('drawText') } : {}),
+  };
+};
+
+const methods = (calls: Call[]) => calls.map(([method]) => method);
+
+describe('debugDraw', () => {
+  beforeEach(() => {
+    resetBodyIdCounter();
+  });
+
+  it('should clear, then draw each body shape by default', () => {
+    const world = createWorld();
+    addBody(world, createCircle({ radius: 5, position: { x: 1, y: 2 } }));
+    addBody(world, createRectangle({ width: 4, height: 2, rotation: 0.5 }));
+    const renderer = createRecorder();
+
+    debugDraw(world, renderer);
+
+    expect(renderer.calls[0]).toEqual(['clear']);
+    expect(renderer.calls[1]).toEqual(['drawCircle', 1, 2, 5, '#4488ff']);
+    expect(renderer.calls[2]).toEqual(['drawRect', 0, 0, 4, 2, 0.5, '#4488ff']);
+    expect(renderer.calls).toHaveLength(3);
+  });
+
+  it('should draw body IDs when showIds is enabled', () => {
+    const world = createWorld();
+    const body = createCircle({ radius: 5, position: { x: 3, y: 4 } });
+    addBody(world, body);
+    const renderer = createRecorder();
+
+    debugDraw(world, renderer, { showIds: true });
+
+    expect(renderer.calls).toContainEqual(['drawText', { x: 3, y: 4 }, body.id, '#ffffff']);
+  });
+
+  it('should skip IDs for renderers without drawText', () => {
+    const world = createWorld();
+    addBody(world, createCircle({ radius: 5 }));
+    const renderer = createRecorder(false);
+
+    expect(() => debugDraw(world, renderer, { showIds: true })).not.toThrow();
+    expect(methods(renderer.calls)).toEqual(['clear', 'drawCircle']);
+  });
+
+  it('should draw AABBs, velocity arrows and center of mass when enabled', () => {
+    const world = createWorld();
+    addBody(world, createCircle({ radius: 5, velocity: { x: 10, y: 0 } }));
+    const renderer = createRecorder();
+
+    debugDraw(world, renderer, {
+      showBodies: false,
+      showAABBs: true,
+      showVelocities: true,
+      showCenterOfMass: true,
+    });
+
+    expect(methods(renderer.calls)).toEqual([
+      'clear',
+      'drawRect', // AABB
+      'drawLine', // velocity shaft
+      'drawLine', // arrowhead left
+      'drawLine', // arrowhead right
+      'drawPoint', // center of mass
+    ]);
+  });
+});

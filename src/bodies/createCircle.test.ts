@@ -498,5 +498,40 @@ describe('createCircle', () => {
       expect(aabbCenter.y).toBeCloseTo(position.y, 10);
     });
   });
-});
 
+  describe('input copying', () => {
+    it('should not alias the config position or velocity objects', () => {
+      const position = { x: 1, y: 2 };
+      const velocity = { x: 3, y: 4 };
+      const a = createCircle({ radius: 1, position, velocity });
+      const b = createCircle({ radius: 1, position, velocity });
+
+      expect(a.position).not.toBe(position);
+      expect(a.velocity).not.toBe(velocity);
+      expect(a.position).not.toBe(b.position);
+
+      a.position.x = 99;
+      expect(position.x).toBe(1);
+      expect(b.position.x).toBe(1);
+    });
+  });
+
+  describe('validation', () => {
+    it.each([0, -5, NaN, Infinity])('should reject radius %s', (radius) => {
+      expect(() => createCircle({ radius })).toThrow(RangeError);
+    });
+
+    it.each([0, -100, NaN])('should reject density %s for dynamic bodies', (density) => {
+      expect(() => createCircle({ radius: 1, material: { density } })).toThrow(/density/);
+    });
+
+    it('should ignore density for static and kinematic bodies', () => {
+      expect(() =>
+        createCircle({ radius: 1, type: BodyType.STATIC, material: { density: 0 } })
+      ).not.toThrow();
+      expect(() =>
+        createCircle({ radius: 1, type: BodyType.KINEMATIC, material: { density: 0 } })
+      ).not.toThrow();
+    });
+  });
+});

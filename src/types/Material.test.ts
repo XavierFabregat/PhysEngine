@@ -6,7 +6,7 @@ describe('Material', () => {
     it('should have expected default values', () => {
       expect(DEFAULT_MATERIAL.friction).toBe(0.3);
       expect(DEFAULT_MATERIAL.restitution).toBe(0.2);
-      expect(DEFAULT_MATERIAL.density).toBe(1000);
+      expect(DEFAULT_MATERIAL.density).toBe(1);
     });
 
     it('should be immutable (frozen)', () => {
@@ -19,21 +19,21 @@ describe('Material', () => {
       const material = createMaterial();
       expect(material.friction).toBe(0.3);
       expect(material.restitution).toBe(0.2);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override friction only', () => {
       const material = createMaterial({ friction: 0.8 });
       expect(material.friction).toBe(0.8);
       expect(material.restitution).toBe(0.2);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override restitution only', () => {
       const material = createMaterial({ restitution: 0.9 });
       expect(material.friction).toBe(0.3);
       expect(material.restitution).toBe(0.9);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override density only', () => {
@@ -50,7 +50,7 @@ describe('Material', () => {
       });
       expect(material.friction).toBe(0.7);
       expect(material.restitution).toBe(0.5);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override all properties', () => {

@@ -217,6 +217,7 @@
       <label><input type="checkbox" id="showAABBs"> AABBs</label>
       <label><input type="checkbox" id="showVelocities"> Velocities</label>
       <label><input type="checkbox" id="showCenterOfMass"> Center of Mass</label>
+      <label><input type="checkbox" id="showIds"> Body IDs</label>
     </div>
 
     <div class="panel" id="rotation-panel" style="display: none;">
@@ -282,15 +283,13 @@
       getBodyCount,
       getBodies,
       step,
+      updateBodyAABB,
+      debugDraw,
       BodyType,
-      Vector2,
-      Transform,
-      AABB,
       math
     } from '../dist/index.js';
     
-    import { CanvasRenderer } from '../dist/debug/examples/CanvasRenderer.js';
-    import { debugDraw } from '../dist/debug/debugDraw.js';
+    import { CanvasRenderer } from '../dist/canvas.js';
 
     // Get canvas and create renderer
     const canvas = document.getElementById('canvas');
@@ -626,32 +625,6 @@
       draggingBody = null;
     });
 
-    // Update AABB for a body (handles rotation)
-    function updateBodyAABB(body) {
-      if (body.shape.type === 'circle') {
-        const r = body.shape.radius;
-        body.aabb = {
-          min: { x: body.position.x - r, y: body.position.y - r },
-          max: { x: body.position.x + r, y: body.position.y + r }
-        };
-      } else if (body.shape.type === 'rectangle') {
-        const { width, height, vertices } = body.shape;
-        
-        if (body.rotation === 0) {
-          const hw = width / 2;
-          const hh = height / 2;
-          body.aabb = {
-            min: { x: body.position.x - hw, y: body.position.y - hh },
-            max: { x: body.position.x + hw, y: body.position.y + hh }
-          };
-        } else {
-          const transform = Transform.create(body.position, body.rotation);
-          const worldVertices = vertices.map(v => Transform.transformPoint(transform, v));
-          body.aabb = AABB.fromPoints(worldVertices);
-        }
-      }
-    }
-
     // Update info panel
     function updateInfo() {
       const bodies = getBodies(world);
@@ -703,7 +676,8 @@
         showBodies: document.getElementById('showBodies').checked,
         showAABBs: document.getElementById('showAABBs').checked,
         showVelocities: document.getElementById('showVelocities').checked,
-        showCenterOfMass: document.getElementById('showCenterOfMass').checked
+        showCenterOfMass: document.getElementById('showCenterOfMass').checked,
+        showIds: document.getElementById('showIds').checked
       };
 
       debugDraw(world, renderer, options);

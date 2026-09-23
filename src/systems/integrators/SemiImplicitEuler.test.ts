@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { VerletIntegrator } from './Verlet';
+import { SemiImplicitEulerIntegrator, VerletIntegrator } from './SemiImplicitEuler';
 import { createCircle, resetBodyIdCounter } from '../../bodies/createCircle';
 import { createRectangle } from '../../bodies/createRectangle';
 import { BodyType } from '../../types/BodyType';
 
-describe('VerletIntegrator', () => {
-  let integrator: VerletIntegrator;
+describe('SemiImplicitEulerIntegrator', () => {
+  let integrator: SemiImplicitEulerIntegrator;
 
   beforeEach(() => {
-    integrator = new VerletIntegrator();
+    integrator = new SemiImplicitEulerIntegrator();
     resetBodyIdCounter();
   });
 
@@ -71,6 +71,17 @@ describe('VerletIntegrator', () => {
       // Should not move (no gravity applied)
       expect(body.position).toEqual({ x: 0, y: 0 });
       expect(body.velocity).toEqual({ x: 0, y: 0 });
+    });
+
+    it('should clear forces and torque so they do not accumulate', () => {
+      const body = createCircle({ radius: 20, type: BodyType.KINEMATIC });
+      body.force = { x: 5, y: 0 };
+      body.torque = 3;
+
+      integrator.integrate(body, 1 / 60, { x: 0, y: 0 });
+
+      expect(body.force).toEqual({ x: 0, y: 0 });
+      expect(body.torque).toBe(0);
     });
 
     it('should update rotation from angular velocity', () => {
@@ -233,6 +244,36 @@ describe('VerletIntegrator', () => {
       expect(body.velocity.y).toBeCloseTo(100, 2);
     });
 
+    it('should have first-order free-fall error of ½·g·t·dt', () => {
+      const body = createCircle({ radius: 1 });
+      const g = 10;
+      const dt = 1 / 60;
+
+      for (let i = 0; i < 60; i++) {
+        integrator.integrate(body, dt, { x: 0, y: g });
+      }
+
+      // Exact: ½gt² = 5; semi-implicit Euler adds ½·g·t·dt
+      expect(body.position.y).toBeCloseTo(5 + 0.5 * g * 1 * dt, 10);
+    });
+
+    it('should keep harmonic oscillator energy bounded (symplectic)', () => {
+      const body = createCircle({ radius: 1, position: { x: 1, y: 0 } });
+      const k = 100 * body.mass; // ω = 10 rad/s
+      const dt = 1 / 60;
+      const energy = () =>
+        0.5 * body.mass * body.velocity.x ** 2 + 0.5 * k * body.position.x ** 2;
+      const initial = energy();
+
+      for (let i = 0; i < 6000; i++) {
+        body.force = { x: -k * body.position.x, y: 0 };
+        integrator.integrate(body, dt, { x: 0, y: 0 });
+      }
+
+      expect(energy() / initial).toBeLessThan(1.2);
+      expect(energy() / initial).toBeGreaterThan(0.8);
+    });
+
     it('should be deterministic', () => {
       const body1 = createCircle({ radius: 20, position: { x: 0, y: 0 } });
       const body2 = createCircle({ radius: 20, position: { x: 0, y: 0 } });
@@ -250,5 +291,11 @@ describe('VerletIntegrator', () => {
       expect(body1.velocity.y).toBeCloseTo(body2.velocity.y, 10);
     });
   });
-});
 
+  describe('deprecated VerletIntegrator alias', () => {
+    it('should be the same class', () => {
+      expect(VerletIntegrator).toBe(SemiImplicitEulerIntegrator);
+      expect(new VerletIntegrator()).toBeInstanceOf(SemiImplicitEulerIntegrator);
+    });
+  });
+});

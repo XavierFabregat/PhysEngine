@@ -3,7 +3,7 @@ import type { Vector2 } from '../core/Vector2.js';
 import type { Integrator } from '../types/Integrator.js';
 import type { BroadPhase } from '../types/BroadPhase.js';
 import type { CollisionResolver } from '../types/CollisionResolver.js';
-import { VerletIntegrator } from '../systems/integrators/Verlet.js';
+import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicitEuler.js';
 import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce.js';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver.js';
 
@@ -12,18 +12,18 @@ import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver.js';
  */
 export interface WorldConfig {
   /**
-   * Global gravity acceleration vector (m/s²).
-   * Default: { x: 0, y: 400 } (downward, good for games at 800x600 screen)
+   * Global gravity acceleration vector (world units/s²).
+   * Default: { x: 0, y: 400 } (downward in y-down screen coordinates;
+   * tuned for pixel units on an ~800x600 canvas)
    */
   gravity?: Vector2;
 
   /**
    * Integrator for numerical integration.
-   * Default: VerletIntegrator (stable, good for games)
+   * Default: a new SemiImplicitEulerIntegrator per world (stable, good for games)
    * 
    * Swap for different behavior:
-   * - VerletIntegrator: Stable, position-based (default)
-   * - EulerIntegrator: Fast, less accurate (future)
+   * - SemiImplicitEulerIntegrator: Symplectic, stable, first order (default)
    * - RK4Integrator: Accurate, expensive (future)
    */
   integrator?: Integrator;
@@ -52,15 +52,9 @@ export interface WorldConfig {
 }
 
 /**
- * Default world configuration factory.
- * Creates new instances to avoid sharing between worlds.
+ * Default gravity (y-down screen coordinates, pixel units).
  */
-const getDefaultConfig = (): Required<WorldConfig> => ({
-  gravity: { x: 0, y: 400 },
-  integrator: new VerletIntegrator(),
-  broadPhase: new BruteForceBroadPhase(),
-  resolver: new ImpulseResolver(),
-});
+const DEFAULT_GRAVITY: Readonly<Vector2> = Object.freeze({ x: 0, y: 400 });
 
 /**
  * Creates a new physics world.
@@ -71,7 +65,7 @@ const getDefaultConfig = (): Required<WorldConfig> => ({
  * @param config - World configuration
  * @returns A new World instance
  * @example
- * // Create world with defaults (Verlet integrator)
+ * // Create world with defaults (semi-implicit Euler integrator)
  * const world = createWorld();
  * 
  * // Create world with custom gravity
@@ -81,17 +75,16 @@ const getDefaultConfig = (): Required<WorldConfig> => ({
  * 
  * // Create world with custom integrator
  * const world = createWorld({
- *   integrator: new EulerIntegrator()
+ *   integrator: new SemiImplicitEulerIntegrator()  // or any custom Integrator
  * });
  */
 export const createWorld = (config: WorldConfig = {}): World => {
-  const defaults = getDefaultConfig();
-  
-  // Shallow-copy gravity to avoid sharing the default config object
-  const gravity = config.gravity ?? { ...defaults.gravity };
-  const integrator = config.integrator ?? defaults.integrator;
-  const broadPhase = config.broadPhase ?? defaults.broadPhase;
-  const resolver = config.resolver ?? defaults.resolver;
+  // Copy gravity so the world never aliases the caller's (or the default) object
+  const gravity = { ...(config.gravity ?? DEFAULT_GRAVITY) };
+  // Fresh system instances per world so stateful systems are never shared
+  const integrator = config.integrator ?? new SemiImplicitEulerIntegrator();
+  const broadPhase = config.broadPhase ?? new BruteForceBroadPhase();
+  const resolver = config.resolver ?? new ImpulseResolver();
 
   return {
     bodies: [],

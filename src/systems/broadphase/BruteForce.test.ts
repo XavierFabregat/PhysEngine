@@ -192,24 +192,37 @@ describe('BruteForceBroadPhase', () => {
       expect(pairs).toEqual([]);
     });
 
-    it('should detect sensors', () => {
+    it('should apply layer filtering to sensors', () => {
       const sensor = createCircle({
         position: { x: 0, y: 0 },
         radius: 10,
         isSensor: true,
-        collidesWith: 0  // Normally wouldn't collide with anything
+        collidesWith: 0  // Masks out everything
       });
       
       const body = createCircle({
         position: { x: 5, y: 0 },
         radius: 10,
-        collidesWith: 0  // Normally wouldn't collide with anything
+        collidesWith: 0
       });
       
-      const pairs = broadPhase.getPairs([sensor, body]);
+      // Sensors obey the same layer/mask filtering as other bodies
+      expect(broadPhase.getPairs([sensor, body])).toEqual([]);
+    });
+
+    it('should detect overlapping sensors when layers match', () => {
+      const sensor = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        isSensor: true,
+      });
       
-      // Sensors always detect (even with collidesWith = 0)
-      expect(pairs).toHaveLength(1);
+      const body = createCircle({
+        position: { x: 5, y: 0 },
+        radius: 10,
+      });
+      
+      expect(broadPhase.getPairs([sensor, body])).toHaveLength(1);
     });
   });
 

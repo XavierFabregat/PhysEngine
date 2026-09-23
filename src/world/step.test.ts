@@ -34,6 +34,24 @@ describe('step', () => {
       expect(world.time).toBeCloseTo(0.17, 10);
     });
 
+    it('should reject NaN, infinite or negative dt', () => {
+      const world = createWorld();
+      const body = createCircle({ radius: 10 });
+      addBody(world, body);
+
+      for (const dt of [NaN, Infinity, -1 / 60]) {
+        expect(() => step(world, dt)).toThrow(RangeError);
+      }
+      expect(body.position).toEqual({ x: 0, y: 0 });
+      expect(world.time).toBe(0);
+    });
+
+    it('should accept dt = 0', () => {
+      const world = createWorld();
+      step(world, 0);
+      expect(world.time).toBe(0);
+    });
+
     it('should do nothing for empty world', () => {
       const world = createWorld();
       

@@ -1,7 +1,5 @@
 import type { World } from '../types/World.js';
-import type { Body } from '../types/Body.js';
-import * as AABB from '../core/AABB.js';
-import * as Transform from '../core/Transform.js';
+import { updateBodyAABB } from '../bodies/aabb.js';
 import { detectCircleCircle } from '../systems/narrowphase/circleCircle.js';
 
 /**
@@ -20,6 +18,8 @@ import { detectCircleCircle } from '../systems/narrowphase/circleCircle.js';
  * 
  * @param world - The physics world to simulate
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
+ * @throws RangeError if dt is negative or not finite (NaN would silently
+ *   corrupt every body's position)
  * 
  * @example
  * const world = createWorld();
@@ -33,6 +33,10 @@ import { detectCircleCircle } from '../systems/narrowphase/circleCircle.js';
  * }
  */
 export const step = (world: World, dt: number): void => {
+  if (!Number.isFinite(dt) || dt < 0) {
+    throw new RangeError(`step: dt must be a finite, non-negative number (got ${dt})`);
+  }
+
   // 1. Integrate all bodies (update positions and velocities)
   for (const body of world.bodies) {
     world.integrator.integrate(body, dt, world.gravity);
@@ -67,40 +71,3 @@ export const step = (world: World, dt: number): void => {
   // 5. Increment simulation time
   world.time += dt;
 };
-
-/**
- * Updates a body's AABB based on its current position and shape.
- * Handles rotation for rectangles and polygons.
- * 
- * @param body - The body to update
- */
-function updateBodyAABB(body: Body): void {
-  if (body.shape.type === 'circle') {
-    // Circle AABB is simple - doesn't rotate
-    const r = body.shape.radius;
-    body.aabb = AABB.fromCenter(body.position, { x: r, y: r });
-  } else if (body.shape.type === 'rectangle') {
-    // Rectangle - if rotated, need to transform vertices
-    if (body.rotation === 0) {
-      // Optimization: no rotation
-      const hw = body.shape.width * 0.5;
-      const hh = body.shape.height * 0.5;
-      body.aabb = AABB.fromCenter(body.position, { x: hw, y: hh });
-    } else {
-      // Transform vertices to world space
-      const transform = Transform.create(body.position, body.rotation);
-      const worldVertices = body.shape.vertices.map((v) =>
-        Transform.transformPoint(transform, v)
-      );
-      body.aabb = AABB.fromPoints(worldVertices);
-    }
-  } else if (body.shape.type === 'polygon') {
-    // Polygon - always need to transform vertices
-    const transform = Transform.create(body.position, body.rotation);
-    const worldVertices = body.shape.vertices.map((v) =>
-      Transform.transformPoint(transform, v)
-    );
-    body.aabb = AABB.fromPoints(worldVertices);
-  }
-}
-
