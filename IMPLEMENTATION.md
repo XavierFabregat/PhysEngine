@@ -171,7 +171,7 @@ Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whi
 3. **Forces API** *(moved up from v1.0 Forces below)* — `applyForce(body, force, point?)`, `applyImpulse(body, impulse, point?)`, `applyTorque(body, torque)`.
    - *Why:* the rover writes `body.force` directly and the slingshot overwrites `velocity`; neither can push at a point, so there is no spin from an off-centre kick.
    - *Done when:* an off-centre impulse produces the analytic linear + angular velocity change.
-4. **Distribution builds** — a single-file ESM bundle (`dist/physengine.min.js`) plus an IIFE/UMD build exposing a global, both in the npm package.
+4. ✅ **Distribution builds** — `dist/physengine.min.js` (ESM) and `dist/physengine.iife.min.js` (global `PhysEngine`), checked in CI (done; the Playground switches to the published file with the next release).
    - *Why:* the Playground artifact failed because the package is 34 small ES modules; it works only because jsDelivr's `/+esm` bundles it on the fly. A single file drops into a `<script>` tag, CodePen, or a sandboxed page.
    - *Done when:* the Playground loads the published bundle file directly; CI checks both builds import cleanly.
 

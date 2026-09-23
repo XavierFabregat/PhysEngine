@@ -6,6 +6,8 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "jsdelivr": "./dist/physengine.iife.min.js",
+  "unpkg": "./dist/physengine.iife.min.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -14,13 +16,14 @@
     "./canvas": {
       "types": "./dist/canvas.d.ts",
       "import": "./dist/canvas.js"
-    }
+    },
+    "./bundle": "./dist/physengine.min.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/bundle.mjs",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
@@ -33,7 +36,8 @@
     "example:balls": "tsx examples/bouncing-balls.ts",
     "example:swarm": "tsx examples/swarm.ts",
     "debug:viewer": "pnpm build && npx serve . -p 8000",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "check:bundles": "node scripts/check-bundles.mjs"
   },
   "keywords": [
     "physics",
@@ -60,8 +64,10 @@
     "@types/node": "^25.0.8",
     "@vitest/coverage-v8": "4.0.17",
     "@vitest/ui": "4.0.17",
+    "esbuild": "0.27.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.17"
-  }
+  },
+  "sideEffects": false
 }
