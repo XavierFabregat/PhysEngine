@@ -166,7 +166,7 @@ Core physics engine with all essential features for 2D game development.
 
 #### Bodies
 - [x] Body types: `static`, `dynamic`, `kinematic`
-- [ ] Shapes: `circle`, `polygon`, `rectangle` (circle + rectangle done; polygon factory pending)
+- [x] Shapes: `circle`, `polygon`, `rectangle`
 - [ ] Particles (lightweight point masses)
 - [ ] Properties: position, velocity, acceleration, angle, angularVelocity
 - [x] Mass and inertia calculation from shape + density
@@ -178,8 +178,8 @@ Core physics engine with all essential features for 2D game development.
 
 #### Collision Detection
 - [ ] Broad phase: Spatial hash grid (default) (brute force in place for now)
-- [ ] Narrow phase: SAT for circle-circle, circle-polygon, polygon-polygon (circle-circle and circle-rectangle done, dispatched by `ShapeDispatchNarrowPhase`)
-- [ ] Contact manifold generation (contact points, normal, penetration depth) (single-point `Contact` done)
+- [x] Narrow phase: SAT for circle-circle, circle-polygon, polygon-polygon (dispatched by `ShapeDispatchNarrowPhase`)
+- [x] Contact manifold generation (contact points, normal, penetration depth): 1–2 clipped points for polygon pairs
 
 #### Collision Response
 - [ ] Impulse-based resolver (linear only; no angular response yet)
@@ -221,7 +221,7 @@ Core physics engine with all essential features for 2D game development.
 #### Systems Architecture
 - [x] `Integrator` interface + semi-implicit Euler implementation
 - [ ] `BroadPhase` interface + SpatialHash implementation
-- [ ] `NarrowPhase` interface + SAT implementation (interface wired into `World`; SAT pending)
+- [x] `NarrowPhase` interface + SAT implementation
 - [ ] `CollisionResolver` interface + Impulse implementation
 - [ ] `defaultSystems` preset
 

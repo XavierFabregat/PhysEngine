@@ -4,6 +4,8 @@ import type { Contact } from '../../types/Contact.js';
 import type { Shape } from '../../types/Shape.js';
 import { detectCircleCircle } from './circleCircle.js';
 import { detectCircleRectangle } from './circleRectangle.js';
+import { detectCirclePolygon } from './circlePolygon.js';
+import { detectPolygonPolygon } from './polygonPolygon.js';
 
 /**
  * A shape-pair collision test. Receives the bodies in the order it was
@@ -23,13 +25,15 @@ type ShapeType = Shape['type'];
  *
  * Unsupported pairs return null (no collision).
  *
- * Supported by default:
+ * Supported by default (every pair of built-in shapes):
  * - circle / circle
  * - circle / rectangle
+ * - circle / polygon
+ * - rectangle / rectangle, rectangle / polygon, polygon / polygon (SAT)
  *
  * @example
  * const narrowPhase = new ShapeDispatchNarrowPhase();
- * narrowPhase.register('rectangle', 'rectangle', detectRectangleRectangle);
+ * narrowPhase.register('polygon', 'polygon', myCustomPolygonTest);
  * const world = createWorld({ narrowPhase });
  */
 export class ShapeDispatchNarrowPhase implements NarrowPhase {
@@ -38,6 +42,10 @@ export class ShapeDispatchNarrowPhase implements NarrowPhase {
   constructor() {
     this.register('circle', 'circle', detectCircleCircle);
     this.register('circle', 'rectangle', detectCircleRectangle);
+    this.register('circle', 'polygon', detectCirclePolygon);
+    this.register('rectangle', 'rectangle', detectPolygonPolygon);
+    this.register('rectangle', 'polygon', detectPolygonPolygon);
+    this.register('polygon', 'polygon', detectPolygonPolygon);
   }
 
   /**
@@ -73,9 +81,8 @@ export class ShapeDispatchNarrowPhase implements NarrowPhase {
     if (!contact) return null;
 
     return {
-      point: contact.point,
+      ...contact,
       normal: { x: -contact.normal.x, y: -contact.normal.y },
-      depth: contact.depth,
     };
   }
 }

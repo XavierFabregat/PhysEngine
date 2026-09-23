@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ShapeDispatchNarrowPhase } from './ShapeDispatchNarrowPhase';
 import { detectCircleCircle } from './circleCircle';
 import { detectCircleRectangle } from './circleRectangle';
+import { detectCirclePolygon } from './circlePolygon';
+import { detectPolygonPolygon } from './polygonPolygon';
+import { createPolygon } from '../../bodies/createPolygon';
 import { createCircle, resetBodyIdCounter } from '../../bodies/createCircle';
 import { createRectangle } from '../../bodies/createRectangle';
 
@@ -43,12 +46,35 @@ describe('ShapeDispatchNarrowPhase', () => {
     expect(reversed.point).toEqual(forward.point);
   });
 
-  it('should return null for unsupported shape pairs', () => {
+  it('should dispatch rectangle/rectangle and polygon pairs to SAT', () => {
     const a = createRectangle({ width: 20, height: 20 });
-    const b = createRectangle({ position: { x: 5, y: 0 }, width: 20, height: 20 });
+    const b = createRectangle({ position: { x: 15, y: 0 }, width: 20, height: 20 });
 
-    // rectangle/rectangle (SAT) is not implemented yet
-    expect(narrowPhase.detect(a, b)).toBeNull();
+    const contact = narrowPhase.detect(a, b);
+    expect(contact).toEqual(detectPolygonPolygon(a, b));
+    expect(contact?.depth).toBeCloseTo(5, 10);
+  });
+
+  it('should dispatch polygon/circle with the normal flipped', () => {
+    const triangle = createPolygon({ vertices: [{ x: -20, y: 10 }, { x: 20, y: 10 }, { x: 0, y: -20 }] });
+    // Bottom edge at y = 10; ball 2 px into it
+    const ball = createCircle({ position: { x: 0, y: 18 }, radius: 10 });
+
+    const forward = narrowPhase.detect(ball, triangle)!;
+    const reversed = narrowPhase.detect(triangle, ball)!;
+
+    expect(forward).toEqual(detectCirclePolygon(ball, triangle));
+    expect(reversed.normal.x).toBeCloseTo(-forward.normal.x, 10);
+    expect(reversed.normal.y).toBeCloseTo(-forward.normal.y, 10);
+    expect(reversed.points).toEqual(forward.points);
+  });
+
+  it('should return null for unsupported shape pairs', () => {
+    const a = createCircle({ radius: 10 });
+    const odd = { ...createCircle({ radius: 10 }), shape: { type: 'capsule' } } as unknown as typeof a;
+
+    expect(narrowPhase.detect(a, odd)).toBeNull();
+    expect(narrowPhase.detect(odd, a)).toBeNull();
   });
 
   it('should allow registering a detector for a new shape pair', () => {

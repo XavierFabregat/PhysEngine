@@ -54,8 +54,8 @@ export interface World {
   /**
    * Narrow phase collision detection system.
    * Precise shape-vs-shape tests for pairs the broad phase reports.
-   * Pluggable system - defaults to ShapeDispatchNarrowPhase (circle/circle,
-   * circle/rectangle); register more detectors or swap in a custom one.
+   * Pluggable system - defaults to ShapeDispatchNarrowPhase (every pair of
+   * built-in shapes); register more detectors or swap in a custom one.
    */
   narrowPhase: NarrowPhase;
 

@@ -1365,8 +1365,8 @@ bodyA.angularVelocity += angularImpulse * bodyA.invInertia;
 
 **Phase 3: Complete Narrow Phase**
 - [x] Circle-rectangle detection
-- [ ] Rectangle-rectangle (SAT)
-- [ ] All shape combinations working
+- [x] Rectangle-rectangle (SAT)
+- [x] All shape combinations working (circle, rectangle, convex polygon)
 
 **Phase 4: Full Response**
 - [ ] Impulse with rotation
