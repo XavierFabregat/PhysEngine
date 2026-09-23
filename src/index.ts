@@ -71,6 +71,15 @@ export {
 
 export { step } from './world/step.js';
 export { onCollisionStart, onCollisionActive, onCollisionEnd } from './world/events.js';
+
+// ============================================================
+// WORLD QUERIES
+// ============================================================
+
+export { raycast } from './queries/raycast.js';
+export { queryPoint, bodyContainsPoint } from './queries/queryPoint.js';
+export { queryAABB } from './queries/queryAABB.js';
+export type { QueryFilter, RaycastOptions, RaycastHit } from './types/Query.js';
 export type { CollisionHandler, CollisionEndHandler, Unsubscribe, CollisionEvents } from './types/Events.js';
 
 // ============================================================

@@ -208,9 +208,9 @@ Core physics engine with all essential features for 2D game development.
 - [x] `collisionActive` - bodies still touching (each step)
 
 #### World Queries
-- [ ] `raycast(origin, direction, maxDistance, filter?)` - ray intersection
-- [ ] `queryPoint(point, filter?)` - bodies containing point
-- [ ] `queryAABB(bounds, filter?)` - bodies in bounding box
+- [x] `raycast(origin, direction, maxDistance, filter?)` - ray intersection
+- [x] `queryPoint(point, filter?)` - bodies containing point
+- [x] `queryAABB(bounds, filter?)` - bodies in bounding box
 
 #### World Management
 - [x] `createWorld(config)` - functional factory
