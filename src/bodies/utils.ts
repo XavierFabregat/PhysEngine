@@ -131,11 +131,15 @@ export const calculatePolygonMass = (
 
 /**
  * Calculates the rotational inertia of a polygon about its centroid.
- * Math: I = Σ (mass_i * distance_i²) for all triangular elements
- * Uses the parallel axis theorem and triangulation.
- * @param mass - The polygon mass in kg
- * @param vertices - Polygon vertices (centered at origin)
- * @returns The moment of inertia in kg⋅m²
+ * Math: fan-triangulate from the origin; each triangle (O, v_i, v_{i+1})
+ * contributes cross_i * (x_i² + x_i·x_{i+1} + x_{i+1}² + y_i² + y_i·y_{i+1} + y_{i+1}²)
+ * using the *signed* cross product, so triangles outside the polygon cancel
+ * when the origin lies outside it. That gives the inertia about the origin;
+ * the parallel axis theorem (I_c = I_o − m·|c|²) moves it to the centroid.
+ * Works for either winding and for vertices anywhere relative to the origin.
+ * @param mass - The polygon mass
+ * @param vertices - Polygon vertices (convex, any winding, any offset)
+ * @returns The moment of inertia about the centroid
  */
 export const calculatePolygonInertia = (
   mass: number,
@@ -150,16 +154,20 @@ export const calculatePolygonInertia = (
     const v1 = getCircular(vertices, i);
     const v2 = getCircular(vertices, i + 1);
 
-    const cross = Math.abs(v1.x * v2.y - v1.y * v2.x);
+    const cross = v1.x * v2.y - v1.y * v2.x;
     numerator +=
       cross *
       (v1.x * v1.x + v1.x * v2.x + v2.x * v2.x + v1.y * v1.y + v1.y * v2.y + v2.y * v2.y);
     denominator += cross;
   }
 
-  if (denominator === 0) return 0;
+  if (Math.abs(denominator) < 1e-10) return 0;
 
-  return (mass / 6) * (numerator / denominator);
+  const inertiaAboutOrigin = (mass / 6) * (numerator / denominator);
+  const centroid = calculatePolygonCentroid(vertices);
+  const centroidDistSq = centroid.x * centroid.x + centroid.y * centroid.y;
+
+  return inertiaAboutOrigin - mass * centroidDistSq;
 };
 
 // ============================================================
@@ -205,7 +213,10 @@ export const calculatePolygonCentroid = (
 
 /**
  * Checks if polygon vertices are ordered counter-clockwise.
- * Math: Area > 0 means CCW, < 0 means CW
+ * Math: Area > 0 means CCW, < 0 means CW.
+ * "Counter-clockwise" is in y-up math axes; on a y-down screen the same
+ * vertices appear clockwise. Rectangles created by this library have
+ * positive area.
  * @param vertices - Polygon vertices
  * @returns True if vertices are counter-clockwise
  */
@@ -214,16 +225,22 @@ export const isCounterClockwise = (vertices: readonly Vector2[]): boolean => {
 };
 
 /**
- * Checks if a polygon is convex.
- * Math: All cross products of consecutive edges must have the same sign.
- * @param vertices - Polygon vertices (should be CCW)
- * @returns True if the polygon is convex
+ * Checks if a polygon is convex (and simple, i.e. not self-intersecting).
+ * Math: all cross products of consecutive edges must have the same sign, AND
+ * the edges must turn through exactly one full revolution (±2π) in total.
+ * The second condition rejects self-intersecting "star" polygons such as a
+ * pentagram, whose edges all turn the same way but wind around twice (4π).
+ * Degenerate polygons (zero area, e.g. all vertices collinear) are rejected.
+ * @param vertices - Polygon vertices (either winding)
+ * @returns True if the polygon is convex and simple
  */
 export const isConvex = (vertices: readonly Vector2[]): boolean => {
   if (vertices.length < 3) return false;
+  if (Math.abs(calculatePolygonArea(vertices)) < 1e-10) return false;
 
   let hasPositive = false;
   let hasNegative = false;
+  let totalTurn = 0;
 
   for (let i = 0; i < vertices.length; i++) {
     const v1 = getCircular(vertices, i);
@@ -244,8 +261,11 @@ export const isConvex = (vertices: readonly Vector2[]): boolean => {
 
     // If we have both positive and negative, it's concave
     if (hasPositive && hasNegative) return false;
+
+    // Signed exterior angle at v2
+    totalTurn += Math.atan2(cross, e1x * e2x + e1y * e2y);
   }
 
-  return true;
+  // A simple convex polygon winds exactly once
+  return Math.abs(Math.abs(totalTurn) - 2 * Math.PI) < 1e-6;
 };
-

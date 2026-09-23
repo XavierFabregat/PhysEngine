@@ -282,6 +282,20 @@ describe('math', () => {
       expect(normalized).toBeGreaterThanOrEqual(-Math.PI);
       expect(normalized).toBeLessThanOrEqual(Math.PI);
     });
+
+    it('should terminate for magnitudes beyond float precision of 2π', () => {
+      for (const angle of [1e17, -1e17, Number.MAX_VALUE]) {
+        const normalized = math.normalizeAngle(angle);
+        expect(normalized).toBeGreaterThanOrEqual(-Math.PI);
+        expect(normalized).toBeLessThanOrEqual(Math.PI);
+      }
+    });
+
+    it('should return NaN for non-finite input instead of hanging', () => {
+      expect(math.normalizeAngle(Infinity)).toBeNaN();
+      expect(math.normalizeAngle(-Infinity)).toBeNaN();
+      expect(math.normalizeAngle(NaN)).toBeNaN();
+    });
   });
 
   describe('shortestAngleDifference', () => {

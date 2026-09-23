@@ -148,6 +148,15 @@ describe('BruteForceBroadPhase', () => {
       expect(pairs[0]).toEqual([0, 1]);
     });
 
+    it('should skip static-kinematic and kinematic-kinematic pairs', () => {
+      const staticBody = createCircle({ radius: 10, type: BodyType.STATIC });
+      const kinematicA = createCircle({ position: { x: 5, y: 0 }, radius: 10, type: BodyType.KINEMATIC });
+      const kinematicB = createCircle({ position: { x: 8, y: 0 }, radius: 10, type: BodyType.KINEMATIC });
+
+      // All three overlap, but none can respond to a collision
+      expect(broadPhase.getPairs([staticBody, kinematicA, kinematicB])).toEqual([]);
+    });
+
     it('should find kinematic-dynamic pairs', () => {
       const kinematicBody = createCircle({
         position: { x: 0, y: 0 },
@@ -192,24 +201,37 @@ describe('BruteForceBroadPhase', () => {
       expect(pairs).toEqual([]);
     });
 
-    it('should detect sensors', () => {
+    it('should apply layer filtering to sensors', () => {
       const sensor = createCircle({
         position: { x: 0, y: 0 },
         radius: 10,
         isSensor: true,
-        collidesWith: 0  // Normally wouldn't collide with anything
+        collidesWith: 0  // Masks out everything
       });
       
       const body = createCircle({
         position: { x: 5, y: 0 },
         radius: 10,
-        collidesWith: 0  // Normally wouldn't collide with anything
+        collidesWith: 0
       });
       
-      const pairs = broadPhase.getPairs([sensor, body]);
+      // Sensors obey the same layer/mask filtering as other bodies
+      expect(broadPhase.getPairs([sensor, body])).toEqual([]);
+    });
+
+    it('should detect overlapping sensors when layers match', () => {
+      const sensor = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        isSensor: true,
+      });
       
-      // Sensors always detect (even with collidesWith = 0)
-      expect(pairs).toHaveLength(1);
+      const body = createCircle({
+        position: { x: 5, y: 0 },
+        radius: 10,
+      });
+      
+      expect(broadPhase.getPairs([sensor, body])).toHaveLength(1);
     });
   });
 

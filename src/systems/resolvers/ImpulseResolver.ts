@@ -10,8 +10,11 @@ import * as Vec2 from '../../core/Vector2.js';
  * This resolver:
  * 1. Separates overlapping bodies (position correction)
  * 2. Applies collision impulse (velocity change for bouncing)
- * 3. Respects material properties (restitution, friction)
- * 4. Handles static/kinematic bodies correctly
+ * 3. Respects material restitution (friction is not implemented yet)
+ * 4. Handles static/kinematic bodies correctly (infinite mass pairs are a no-op)
+ *
+ * Linear response only: the contact point is not used yet, so collisions
+ * never change angular velocity.
  * 
  * Math:
  * - Impulse j = -(1 + e) * vRel · n / (1/mA + 1/mB)
@@ -114,13 +117,17 @@ export class ImpulseResolver implements CollisionResolver {
     // Don't resolve if bodies are separating
     if (velocityAlongNormal > 0) return;
 
+    // Both bodies have infinite mass (static/kinematic): nothing can respond.
+    // Without this guard the impulse is x/0 and velocities become NaN.
+    const totalInvMass = bodyA.invMass + bodyB.invMass;
+    if (totalInvMass === 0) return;
+
     // Calculate combined restitution (min gives more realistic behavior)
     const restitution = Math.min(bodyA.material.restitution, bodyB.material.restitution);
 
     // Calculate impulse magnitude
     // j = -(1 + e) * vRel · n / (1/mA + 1/mB)
-    const impulseMagnitude =
-      -(1 + restitution) * velocityAlongNormal / (bodyA.invMass + bodyB.invMass);
+    const impulseMagnitude = -(1 + restitution) * velocityAlongNormal / totalInvMass;
 
     // Apply impulse along normal
     const impulse = Vec2.scale(contact.normal, impulseMagnitude);

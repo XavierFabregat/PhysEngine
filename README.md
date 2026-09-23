@@ -8,9 +8,17 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ## Status: In Development 🚧
 
-**Current Version:** 0.1.0  
-**Core Math Layer:** ✅ Complete (293 tests passing)  
-**Physics Simulation:** ⏳ Coming soon
+**Current Version:** 0.2.0  
+**Core Math Layer:** ✅ Complete  
+**Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
+**Collision Detection & Response:** 🚧 Circle-circle only (brute-force broad phase, impulse bounce, no friction or rotation yet)
+
+## Conventions
+
+- **Coordinates:** y-down screen space (+x right, +y down), matching Canvas/DOM. `Vector2.UP` is `{ x: 0, y: -1 }`.
+- **Rotation:** radians; positive rotates +x toward +y, which is **clockwise on screen**.
+- **Winding:** polygon/rectangle vertices have positive signed area (counter-clockwise in y-up math axes, clockwise as seen on screen).
+- **Units:** arbitrary world units, pixels by default. Default gravity is `{ x: 0, y: 400 }` units/s², default density is `1` mass per unit area.
 
 ## Features (So Far)
 
@@ -39,6 +47,20 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
   - Interpolation: lerp, smoothstep
   - Angle operations: deg/rad conversion, normalization
   - Random utilities
+
+### ✅ Bodies & World
+
+- **Body factories** - `createCircle`, `createRectangle` (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
+- **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
+- **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), circle-circle narrow phase, `ImpulseResolver` (restitution + positional correction; sensors detect without responding)
+- **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
+- **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
+
+### ✅ Debug Rendering
+
+- `debugDraw(world, renderer, options)` against a library-agnostic `DebugRenderer` interface (bodies, AABBs, velocities, center of mass, IDs)
+- `CanvasRenderer` reference implementation at the `@xavifabregat/physengine/canvas` entry point (browser only)
 
 ## Examples
 
@@ -96,6 +118,36 @@ if (AABB.overlaps(box1, box2)) {
 // Math utilities
 const interpolated = math.lerp(0, 100, 0.5); // 50
 const angle = math.degToRad(90); // π/2
+```
+
+### Simulating bodies
+
+```typescript
+import { createWorld, createCircle, createRectangle, addBody, step, BodyType } from '@xavifabregat/physengine';
+
+const world = createWorld(); // gravity { x: 0, y: 400 }, y-down
+
+addBody(world, createRectangle({
+  position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC,
+}));
+const ball = createCircle({ position: { x: 400, y: 100 }, radius: 20 });
+addBody(world, ball);
+
+function update() {
+  step(world, 1 / 60);
+  console.log(ball.position); // falls through the floor: circle-rectangle collisions aren't implemented yet
+  requestAnimationFrame(update);
+}
+```
+
+### Debug rendering in the browser
+
+```typescript
+import { debugDraw } from '@xavifabregat/physengine';
+import { CanvasRenderer } from '@xavifabregat/physengine/canvas';
+
+const renderer = new CanvasRenderer(document.querySelector<HTMLCanvasElement>('canvas')!);
+debugDraw(world, renderer, { showAABBs: true, showIds: true });
 ```
 
 ## Development
@@ -183,12 +235,19 @@ The workflow automatically:
 ```
 PhysEngine/
 ├── src/
-│   └── core/              # Core math primitives
-│       ├── Vector2.ts     # 2D vector operations
-│       ├── Transform.ts   # Coordinate transforms
-│       ├── AABB.ts        # Bounding boxes
-│       └── math.ts        # Utility functions
-├── examples/              # Interactive demos
+│   ├── core/              # Math primitives (Vector2, Transform, AABB, math)
+│   ├── types/             # Body, Shape, Material, World, Integrator
+│   ├── bodies/            # Body factories, mass/inertia, AABB helpers
+│   ├── world/             # createWorld, body management, step
+│   ├── systems/
+│   │   ├── integrators/   # SemiImplicitEuler (default)
+│   │   ├── broadphase/    # BruteForce
+│   │   ├── narrowphase/   # circleCircle
+│   │   └── resolvers/     # ImpulseResolver
+│   ├── debug/             # DebugRenderer interface, debugDraw, CanvasRenderer
+│   ├── index.ts           # Main (headless) entry point
+│   └── canvas.ts          # Browser-only entry point (CanvasRenderer)
+├── examples/              # Terminal demos + browser debug viewer
 ├── dist/                  # Built library (npm package)
 └── IMPLEMENTATION.md      # Full roadmap
 ```
@@ -198,10 +257,10 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Bodies & Shapes** - Circle, polygon, rectangle
-- **World Management** - Add/remove bodies, queries
-- **Integration** - Verlet integrator, simulation loop
-- **Collision Detection** - Spatial hash (broad) + SAT (narrow)
+- **Narrow phase** - Circle-rectangle, then polygon/rectangle SAT
+- **Collision Response** - Friction and rotational (angular) impulses
+- **Broad phase** - Spatial hash once body counts demand it
+- **Polygon bodies** - `createPolygon` (mass/inertia helpers already in place)
 - **Constraints** - Springs, rods, pins
 - **Events** - Collision callbacks
 
@@ -214,14 +273,11 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ## Testing
 
-**293 tests** covering all core math operations:
-- ✅ 84 tests - Vector2
-- ✅ 87 tests - math utilities
-- ✅ 49 tests - Transform
-- ✅ 73 tests - AABB
+Unit tests cover the math layer, body factories, mass/inertia helpers, world management, the integrator, and `debugDraw`.
 
 ```bash
 pnpm test:run
+pnpm test:coverage
 ```
 
 ## License
@@ -247,5 +303,5 @@ For detailed instructions on the git workflow, GitHub CLI commands, and release 
 
 ---
 
-**Progress:** 47% of v1.0 foundation complete | [View full implementation plan →](./IMPLEMENTATION.md)
+[View full implementation plan →](./IMPLEMENTATION.md)
 

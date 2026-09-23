@@ -34,6 +34,24 @@ describe('step', () => {
       expect(world.time).toBeCloseTo(0.17, 10);
     });
 
+    it('should reject NaN, infinite or negative dt', () => {
+      const world = createWorld();
+      const body = createCircle({ radius: 10 });
+      addBody(world, body);
+
+      for (const dt of [NaN, Infinity, -1 / 60]) {
+        expect(() => step(world, dt)).toThrow(RangeError);
+      }
+      expect(body.position).toEqual({ x: 0, y: 0 });
+      expect(world.time).toBe(0);
+    });
+
+    it('should accept dt = 0', () => {
+      const world = createWorld();
+      step(world, 0);
+      expect(world.time).toBe(0);
+    });
+
     it('should do nothing for empty world', () => {
       const world = createWorld();
       
@@ -328,6 +346,35 @@ describe('step', () => {
   });
 
   describe('collision detection and response', () => {
+    it('should keep kinematic, static and later dynamic bodies finite after a kinematic touches a static peg', () => {
+      // Regression: kinematic-vs-static contacts produced 0/0 impulses, turning
+      // both velocities into NaN; the poisoned peg then NaN'd any ball landing on it.
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const peg = createCircle({ position: { x: 0, y: 100 }, radius: 10, type: BodyType.STATIC });
+      const sweeper = createCircle({
+        position: { x: -30, y: 100 },
+        radius: 5,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 60, y: 0 },
+      });
+      addBody(world, peg);
+      addBody(world, sweeper);
+
+      for (let i = 0; i < 30; i++) step(world, 1 / 60);
+
+      expect(peg.velocity).toEqual({ x: 0, y: 0 });
+      expect(sweeper.velocity).toEqual({ x: 60, y: 0 });
+      expect(sweeper.position.x).toBeCloseTo(0, 10); // passes through the peg unaffected
+
+      const ball = createCircle({ position: { x: 0, y: 40 }, radius: 8 });
+      addBody(world, ball);
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      expect(Number.isFinite(ball.position.x)).toBe(true);
+      expect(Number.isFinite(ball.position.y)).toBe(true);
+      expect(ball.position.y).toBeLessThan(100); // resting on top of the peg, not NaN or through it
+    });
+
     it('should call broad phase and execute collision loop', () => {
       const world = createWorld({ gravity: { x: 0, y: 0 } });
       

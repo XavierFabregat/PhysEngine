@@ -2,10 +2,10 @@ import type { Body } from '../types/Body.js';
 import type { Material } from '../types/Material.js';
 import { BodyType } from '../types/BodyType.js';
 import { createMaterial } from '../types/Material.js';
-import * as AABB from '../core/AABB.js';
-import * as Transform from '../core/Transform.js';
 import { calculateRectangleMass, calculateRectangleInertia } from './utils.js';
 import { generateBodyId } from './idGenerator.js';
+import { computeShapeAABB } from './aabb.js';
+import { assertPositiveFinite } from './validate.js';
 
 /**
  * Configuration for creating a rectangle body.
@@ -29,10 +29,13 @@ export interface RectangleConfig {
   /** Initial linear velocity (default: zero) */
   velocity?: { x: number; y: number };
 
-  /** Initial angular velocity in rad/s (default: 0) */
+  /** Initial angular velocity in rad/s (default: 0, positive = +x toward +y) */
   angularVelocity?: number;
 
-  /** Initial rotation in radians (default: 0) */
+  /**
+   * Initial rotation in radians (default: 0).
+   * Positive rotates +x toward +y (clockwise on a y-down screen).
+   */
   rotation?: number;
 
   /** Collision layer bitmask (default: 1) */
@@ -53,10 +56,12 @@ export interface RectangleConfig {
 
 /**
  * Creates vertices for a rectangle in local space (centered at origin).
- * Vertices are in counter-clockwise order starting from bottom-left.
+ * Order: top-left, top-right, bottom-right, bottom-left on a y-down screen.
+ * That is positive winding (signed area > 0): counter-clockwise in y-up math
+ * axes, clockwise as seen on screen.
  * @param width - Rectangle width
  * @param height - Rectangle height
- * @returns Four vertices in CCW order
+ * @returns Four vertices with positive winding
  */
 const createRectangleVertices = (
   width: number,
@@ -71,10 +76,10 @@ const createRectangleVertices = (
   const halfH = height * 0.5;
 
   return [
-    { x: -halfW, y: -halfH }, // Bottom-left
-    { x: halfW, y: -halfH },  // Bottom-right
-    { x: halfW, y: halfH },   // Top-right
-    { x: -halfW, y: halfH },  // Top-left
+    { x: -halfW, y: -halfH }, // Top-left (screen)
+    { x: halfW, y: -halfH },  // Top-right
+    { x: halfW, y: halfH },   // Bottom-right
+    { x: -halfW, y: halfH },  // Bottom-left
   ];
 };
 
@@ -121,50 +126,43 @@ export const createRectangle = (config: RectangleConfig): Body => {
     userData,
   } = config;
 
+  assertPositiveFinite('createRectangle', 'width', width);
+  assertPositiveFinite('createRectangle', 'height', height);
+
   // Create material from config
   const material = createMaterial(materialConfig);
 
-  // Calculate mass properties
-  const isStaticOrKinematic = type === BodyType.STATIC || type === BodyType.KINEMATIC;
-  const mass = isStaticOrKinematic
+  // Calculate mass properties (static and kinematic bodies have infinite mass)
+  const hasInfiniteMass = type === BodyType.STATIC || type === BodyType.KINEMATIC;
+  if (!hasInfiniteMass) {
+    assertPositiveFinite('createRectangle', 'material.density', material.density);
+  }
+  const mass = hasInfiniteMass
     ? Infinity
     : calculateRectangleMass(width, height, material.density);
-  const invMass = isStaticOrKinematic ? 0 : 1 / mass;
-  const inertia = isStaticOrKinematic
+  const invMass = hasInfiniteMass ? 0 : 1 / mass;
+  const inertia = hasInfiniteMass
     ? Infinity
     : calculateRectangleInertia(mass, width, height);
-  const invInertia = isStaticOrKinematic ? 0 : 1 / inertia;
+  const invInertia = hasInfiniteMass ? 0 : 1 / inertia;
 
-  // Create vertices in local space
-  const vertices = createRectangleVertices(width, height);
-
-  // Create AABB
-  // If rotated, transform vertices to world space first
-  let aabb: AABB.AABB;
-  if (rotation === 0) {
-    // Optimization: no rotation, AABB is simple
-    aabb = AABB.fromCenter(position, { x: width * 0.5, y: height * 0.5 });
-  } else {
-    // Transform vertices to world space
-    const transform = Transform.create(position, rotation);
-    const worldVertices = vertices.map((v) => Transform.transformPoint(transform, v));
-    aabb = AABB.fromPoints(worldVertices);
-  }
-
-  // Create rectangle shape
+  // Create rectangle shape (vertices in local space)
   const shape = {
     type: 'rectangle' as const,
     width,
     height,
-    vertices,
+    vertices: createRectangleVertices(width, height),
   };
+
+  // Copy vectors so the body never aliases the caller's objects
+  const bodyPosition = { x: position.x, y: position.y };
 
   return {
     id: generateBodyId(),
     type,
-    position,
+    position: bodyPosition,
     rotation,
-    velocity,
+    velocity: { x: velocity.x, y: velocity.y },
     angularVelocity,
     force: { x: 0, y: 0 },
     torque: 0,
@@ -174,7 +172,7 @@ export const createRectangle = (config: RectangleConfig): Body => {
     invInertia,
     material,
     shape,
-    aabb,
+    aabb: computeShapeAABB(shape, bodyPosition, rotation),
     layer,
     collidesWith,
     isSensor,

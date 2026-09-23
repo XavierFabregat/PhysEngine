@@ -43,6 +43,8 @@ export type { CircleConfig } from './bodies/createCircle.js';
 export { createRectangle } from './bodies/createRectangle.js';
 export type { RectangleConfig } from './bodies/createRectangle.js';
 
+export { computeShapeAABB, updateBodyAABB } from './bodies/aabb.js';
+
 // ============================================================
 // WORLD
 // ============================================================
@@ -66,7 +68,11 @@ export { step } from './world/step.js';
 // INTEGRATORS
 // ============================================================
 
-export { VerletIntegrator } from './systems/integrators/Verlet.js';
+export {
+  SemiImplicitEulerIntegrator,
+  /** @deprecated Use SemiImplicitEulerIntegrator (it was never Verlet). */
+  VerletIntegrator,
+} from './systems/integrators/SemiImplicitEuler.js';
 
 // ============================================================
 // COLLISION DETECTION & RESPONSE
@@ -88,8 +94,9 @@ export { ImpulseResolver } from './systems/resolvers/ImpulseResolver.js';
 export type { DebugRenderer, DebugDrawOptions } from './debug/DebugRenderer.js';
 export { debugDraw } from './debug/debugDraw.js';
 
-// Example implementations (reference - users should copy/customize)
-export { CanvasRenderer } from './debug/examples/CanvasRenderer.js';
+// The Canvas reference renderer depends on DOM types, so it lives at a
+// separate entry point to keep this one headless:
+//   import { CanvasRenderer } from '@xavifabregat/physengine/canvas';
 
 // ============================================================
 // UTILITIES

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from './createWorld';
-import { VerletIntegrator } from '../systems/integrators/Verlet';
+import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicitEuler';
 import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
 
@@ -30,6 +30,16 @@ describe('createWorld', () => {
   });
 
   describe('custom gravity', () => {
+    it('should copy custom gravity instead of aliasing it', () => {
+      const gravity = { x: 0, y: 9.81 };
+      const world = createWorld({ gravity });
+
+      gravity.y = 0;
+
+      expect(world.gravity).not.toBe(gravity);
+      expect(world.gravity.y).toBe(9.81);
+    });
+
     it('should accept custom gravity', () => {
       const world = createWorld({
         gravity: { x: 0, y: 9.81 },
@@ -120,14 +130,14 @@ describe('createWorld', () => {
   });
 
   describe('integrator configuration', () => {
-    it('should use default Verlet integrator', () => {
+    it('should use default semi-implicit Euler integrator', () => {
       const world = createWorld();
       
-      expect(world.integrator).toBeInstanceOf(VerletIntegrator);
+      expect(world.integrator).toBeInstanceOf(SemiImplicitEulerIntegrator);
     });
 
     it('should accept custom integrator', () => {
-      const customIntegrator = new VerletIntegrator();
+      const customIntegrator = new SemiImplicitEulerIntegrator();
       const world = createWorld({ integrator: customIntegrator });
       
       expect(world.integrator).toBe(customIntegrator);

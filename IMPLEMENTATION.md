@@ -17,7 +17,8 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 - **Functional core, OOP shell** - Internal logic is functional and testable; optional fluent API wrapper for convenience
 - **Dependency injection** - All major systems (integrator, collision detection, etc.) are swappable via interfaces
-- **Immutable vectors** - Prevents mutation bugs, easier to reason about
+- **Immutable vectors, mutable bodies** - Vector values are never mutated (they are replaced), while bodies and the world are updated in place each step for performance
+- **Conventions** - y-down screen coordinates, positive rotation from +x toward +y (clockwise on screen), arbitrary world units (pixels by default)
 - **Composition over inheritance** - Bodies and constraints are composable pieces
 
 ### Systems Architecture
@@ -26,7 +27,7 @@ All pluggable systems implement interfaces, allowing users to swap implementatio
 
 ```typescript
 interface PhysicsSystems {
-  integrator: Integrator;       // How bodies move (Verlet, Euler, RK4)
+  integrator: Integrator;       // How bodies move (Semi-implicit Euler, RK4)
   broadPhase: BroadPhase;       // Fast pair culling (SpatialHash, QuadTree)
   narrowPhase: NarrowPhase;     // Precise collision detection (SAT, GJK)
   resolver: CollisionResolver;  // Collision response (Impulse, Position-based)
@@ -88,8 +89,7 @@ src/
 │
 ├── systems/                   # Pluggable system implementations
 │   ├── integrators/
-│   │   ├── Verlet.ts          # Verlet integration (default)
-│   │   ├── Euler.ts           # Semi-implicit Euler
+│   │   ├── SemiImplicitEuler.ts # Semi-implicit (symplectic) Euler (default)
 │   │   └── RK4.ts             # Runge-Kutta 4th order
 │   │
 │   ├── broadphase/
@@ -103,7 +103,7 @@ src/
 │   │
 │   ├── resolvers/
 │   │   ├── ImpulseResolver.ts # Impulse-based (default)
-│   │   └── PositionResolver.ts# Position-based (for Verlet)
+│   │   └── PositionResolver.ts# Position-based (for PBD-style constraints)
 │   │
 │   ├── sleeping/
 │   │   └── IslandSleeping.ts  # Sleep islands of connected bodies
@@ -146,7 +146,8 @@ src/
 │   └── World.ts               # Fluent class wrapper
 │
 ├── presets.ts                 # Pre-configured system bundles
-└── index.ts                   # Public exports
+├── index.ts                   # Public exports (headless)
+└── canvas.ts                  # Browser-only entry (CanvasRenderer)
 ```
 
 ---
@@ -158,35 +159,35 @@ src/
 Core physics engine with all essential features for 2D game development.
 
 #### Core Math
-- [ ] `Vector2` - immutable 2D vector with full operations (add, sub, scale, dot, cross, normalize, rotate, etc.)
-- [ ] `Transform` - position + rotation representation
-- [ ] `AABB` - axis-aligned bounding box with overlap/contains tests
-- [ ] `math` utilities - clamp, lerp, approximately equal, angle utils
+- [x] `Vector2` - immutable 2D vector with full operations (add, sub, scale, dot, cross, normalize, rotate, etc.)
+- [x] `Transform` - position + rotation representation
+- [x] `AABB` - axis-aligned bounding box with overlap/contains tests
+- [x] `math` utilities - clamp, lerp, approximately equal, angle utils
 
 #### Bodies
-- [ ] Body types: `static`, `dynamic`, `kinematic`
-- [ ] Shapes: `circle`, `polygon`, `rectangle`
+- [x] Body types: `static`, `dynamic`, `kinematic`
+- [ ] Shapes: `circle`, `polygon`, `rectangle` (circle + rectangle done; polygon factory pending)
 - [ ] Particles (lightweight point masses)
 - [ ] Properties: position, velocity, acceleration, angle, angularVelocity
-- [ ] Mass and inertia calculation from shape + density
+- [x] Mass and inertia calculation from shape + density
 
 #### Materials
 - [ ] `friction` - surface grip (0-1)
 - [ ] `restitution` - bounciness (0-1)
-- [ ] `density` - mass per unit area
+- [x] `density` - mass per unit area
 
 #### Collision Detection
-- [ ] Broad phase: Spatial hash grid (default)
-- [ ] Narrow phase: SAT for circle-circle, circle-polygon, polygon-polygon
-- [ ] Contact manifold generation (contact points, normal, penetration depth)
+- [ ] Broad phase: Spatial hash grid (default) (brute force in place for now)
+- [ ] Narrow phase: SAT for circle-circle, circle-polygon, polygon-polygon (circle-circle done)
+- [ ] Contact manifold generation (contact points, normal, penetration depth) (single-point `Contact` done)
 
 #### Collision Response
-- [ ] Impulse-based resolver
-- [ ] Position correction for penetration
+- [ ] Impulse-based resolver (linear only; no angular response yet)
+- [x] Position correction for penetration
 - [ ] Friction impulses
 
 #### Collision Filtering
-- [ ] Layer/mask system for selective collision
+- [ ] Layer/mask system for selective collision (`shouldCollide` helper done; applies to sensors too)
 - [ ] Sensor bodies (detect but don't respond)
 
 #### Constraints
@@ -196,7 +197,7 @@ Core physics engine with all essential features for 2D game development.
 - [ ] Iterative constraint solver
 
 #### Forces
-- [ ] Global gravity
+- [x] Global gravity
 - [ ] `applyForce(force, point?)` - continuous force
 - [ ] `applyImpulse(impulse, point?)` - instant impulse
 - [ ] `applyTorque(amount)` - rotational force
@@ -212,29 +213,30 @@ Core physics engine with all essential features for 2D game development.
 - [ ] `queryAABB(bounds, filter?)` - bodies in bounding box
 
 #### World Management
-- [ ] `createWorld(config)` - functional factory
-- [ ] `step(world, dt)` - advance simulation
-- [ ] Add/remove bodies and constraints
+- [x] `createWorld(config)` - functional factory
+- [x] `step(world, dt)` - advance simulation
+- [ ] Add/remove bodies and constraints (bodies done)
 - [ ] Fluent `World` class wrapper
 
 #### Systems Architecture
-- [ ] `Integrator` interface + Verlet implementation
+- [x] `Integrator` interface + semi-implicit Euler implementation
 - [ ] `BroadPhase` interface + SpatialHash implementation
 - [ ] `NarrowPhase` interface + SAT implementation
 - [ ] `CollisionResolver` interface + Impulse implementation
 - [ ] `defaultSystems` preset
 
 #### Debug Renderer
-- [ ] `DebugRenderer` interface - library-agnostic rendering contract
+- [x] `DebugRenderer` interface - library-agnostic rendering contract
 - [ ] `debugDraw(world, renderer, options?)` - visualize physics simulation
-  - Bodies (shapes, outlines)
-  - AABBs (bounding boxes)
-  - Contacts (collision points, normals)
-  - Constraints (springs, rods, pins)
-  - Velocities (direction vectors)
-  - Center of mass markers
-  - Sleep state visualization
-- [ ] Example implementations for Canvas and SVG
+  - [x] Bodies (shapes, outlines)
+  - [x] AABBs (bounding boxes)
+  - [ ] Contacts (collision points, normals)
+  - [ ] Constraints (springs, rods, pins)
+  - [x] Velocities (direction vectors)
+  - [x] Center of mass markers
+  - [x] Body ID labels (via optional `drawText`)
+  - [ ] Sleep state visualization
+- [ ] Example implementations for Canvas and SVG (Canvas done, at the `/canvas` entry point)
 - [ ] Color schemes for different body states (static, dynamic, kinematic, sleeping)
 
 ---
@@ -249,7 +251,8 @@ Optimizations and quality-of-life improvements.
 - [ ] Warm starting for constraint solver
 
 #### Additional Integrators
-- [ ] Semi-implicit Euler
+- [ ] Velocity Verlet (needs forces re-evaluated mid-step, so the `Integrator`
+      interface must grow a force callback first)
 - [ ] RK4 (Runge-Kutta 4th order)
 
 #### Additional Broad Phases
@@ -354,12 +357,19 @@ Support for more shape types.
 
 ## Technical Decisions
 
-### Why Verlet Integration (Default)?
+### Why Semi-implicit Euler (Default)?
 
-- Naturally stable for constraints and springs
-- Position-based (good for games)
-- Simple implementation
-- Easy velocity derivation when needed
+- Symplectic: energy stays bounded for springs and oscillators, so it is stable
+  for constraints (explicit Euler, or a "Verlet" step that holds acceleration
+  constant over the step, both gain energy)
+- Keeps explicit velocities, which impulse-based collision response needs
+- One force evaluation per step, fits the per-body `Integrator` interface
+- First-order accuracy is acceptable for games (free-fall position is off by
+  ½·g·t·dt, e.g. 1.7% after 1s at 60 Hz)
+
+The integrator was originally named `VerletIntegrator`, but its math was always
+semi-implicit Euler. It was renamed to `SemiImplicitEulerIntegrator`;
+`VerletIntegrator` is kept as a deprecated alias.
 
 ### Why Spatial Hash (Default Broad Phase)?
 
@@ -543,7 +553,7 @@ const selected = queryAABB(world, selectionBounds);
 ### Custom Systems
 
 ```typescript
-import { createWorld, createVerletIntegrator, createSpatialHash } from 'physengine';
+import { createWorld, SemiImplicitEulerIntegrator, createSpatialHash } from 'physengine';
 
 // Create custom integrator
 const myIntegrator = {
@@ -568,15 +578,26 @@ const world = createWorld({
 The debug renderer is a **simple interface** that users implement for their rendering library. It's designed for development/debugging, not production rendering.
 
 ```typescript
-import { debugDraw, DebugRenderer } from 'physengine';
+import { debugDraw, type DebugRenderer } from 'physengine';
 
 // Implement the renderer interface for your graphics library
 const canvasRenderer: DebugRenderer = {
+  clear() {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  },
   drawCircle(x, y, radius, color) {
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.strokeStyle = color;
     ctx.stroke();
+  },
+  drawRect(x, y, width, height, rotation, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.strokeStyle = color;
+    ctx.strokeRect(-width / 2, -height / 2, width, height);
+    ctx.restore();
   },
   drawPolygon(vertices, color) {
     ctx.beginPath();
@@ -586,28 +607,37 @@ const canvasRenderer: DebugRenderer = {
     ctx.strokeStyle = color;
     ctx.stroke();
   },
-  drawLine(x1, y1, x2, y2, color) {
+  drawLine(start, end, color) {
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
     ctx.strokeStyle = color;
     ctx.stroke();
   },
-  drawPoint(x, y, color) {
+  drawPoint(position, color) {
     ctx.fillStyle = color;
-    ctx.fillRect(x - 2, y - 2, 4, 4);
-  }
+    ctx.fillRect(position.x - 2, position.y - 2, 4, 4);
+  },
+  // Optional: needed only for showIds
+  drawText(position, text, color) {
+    ctx.fillStyle = color;
+    ctx.fillText(text, position.x, position.y);
+  },
 };
 
 // Render debug visualization
 debugDraw(world, canvasRenderer, {
   showBodies: true,
   showAABBs: true,
-  showContacts: true,
-  showConstraints: true,
-  showVelocities: false
+  showVelocities: false,
+  showCenterOfMass: false,
+  showIds: true,
+  // Planned once collisions/constraints exist: showContacts, showConstraints
 });
 ```
+
+A ready-made version ships as `CanvasRenderer` at the browser-only entry point
+`@xavifabregat/physengine/canvas`, keeping the main entry headless.
 
 ---
 
@@ -618,7 +648,7 @@ Suggested order to build v1.0:
 1. **Core math** - Vector2, Transform, AABB, utilities
 2. **Body types** - Body interface, Circle, Polygon, Rectangle
 3. **World basics** - createWorld, addBody, removeBody
-4. **Integrator** - Verlet integration, basic step loop
+4. **Integrator** - Semi-implicit Euler integration, basic step loop
 5. **Broad phase** - Spatial hash grid
 6. **Narrow phase** - SAT collision detection
 7. **Collision response** - Impulse resolver

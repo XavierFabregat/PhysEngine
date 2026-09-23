@@ -18,11 +18,12 @@ export interface World {
   bodies: Body[];
 
   /**
-   * Global gravity acceleration vector (m/s²).
-   * Applied to all dynamic bodies each frame.
+   * Global gravity acceleration vector (world units/s²).
+   * Applied to all dynamic bodies each frame. The world is y-down, so
+   * positive y pulls bodies down the screen.
    * Common values:
-   * - Earth: { x: 0, y: 9.81 } (downward)
-   * - Moon: { x: 0, y: 1.62 }
+   * - Default: { x: 0, y: 400 } (pixel-scale games)
+   * - Earth in meters: { x: 0, y: 9.81 }
    * - Space: { x: 0, y: 0 } (no gravity)
    * - Custom: { x: -5, y: 10 } (sideways gravity for platformers)
    */
@@ -37,7 +38,8 @@ export interface World {
 
   /**
    * Integrator for numerical integration of motion equations.
-   * Pluggable system - can swap Verlet, Euler, RK4, or custom implementations.
+   * Pluggable system - defaults to SemiImplicitEulerIntegrator; any custom
+   * implementation of the Integrator interface can be swapped in.
    */
   integrator: Integrator;
 

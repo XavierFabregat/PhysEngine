@@ -172,33 +172,35 @@ describe('Body', () => {
       expect(shouldCollide(bodyA, bodyB)).toBe(false);
     });
 
-    it('should return true if bodyA is a sensor', () => {
+    it('should apply layer filtering to sensors too', () => {
       const sensor = createTestBody({
         layer: LAYER_PLAYER,
-        collidesWith: 0, // Doesn't collide with anything normally
+        collidesWith: 0, // Masks out everything
         isSensor: true,
       });
       const body = createTestBody({
         layer: LAYER_ENEMY,
         collidesWith: 0,
       });
-      expect(shouldCollide(sensor, body)).toBe(true);
+      expect(shouldCollide(sensor, body)).toBe(false);
+      expect(shouldCollide(body, sensor)).toBe(false);
     });
 
-    it('should return true if bodyB is a sensor', () => {
-      const body = createTestBody({
-        layer: LAYER_PLAYER,
-        collidesWith: 0,
-      });
+    it('should detect sensor overlaps when layers match', () => {
       const sensor = createTestBody({
-        layer: LAYER_ENEMY,
-        collidesWith: 0,
+        layer: LAYER_PLAYER,
+        collidesWith: LAYER_ENEMY,
         isSensor: true,
       });
+      const body = createTestBody({
+        layer: LAYER_ENEMY,
+        collidesWith: LAYER_PLAYER,
+      });
+      expect(shouldCollide(sensor, body)).toBe(true);
       expect(shouldCollide(body, sensor)).toBe(true);
     });
 
-    it('should return true if both are sensors', () => {
+    it('should filter two sensors by layer like any other pair', () => {
       const sensorA = createTestBody({
         layer: LAYER_PLAYER,
         collidesWith: 0,
@@ -209,7 +211,7 @@ describe('Body', () => {
         collidesWith: 0,
         isSensor: true,
       });
-      expect(shouldCollide(sensorA, sensorB)).toBe(true);
+      expect(shouldCollide(sensorA, sensorB)).toBe(false);
     });
 
     it('should handle collision with all layers (bitmask all 1s)', () => {

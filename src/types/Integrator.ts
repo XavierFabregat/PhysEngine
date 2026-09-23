@@ -19,8 +19,8 @@ export interface Integrator {
    * @param gravity - Global gravity acceleration vector
    * 
    * @example
-   * const verlet = new VerletIntegrator();
-   * verlet.integrate(body, 1/60, world.gravity);
+   * const integrator = new SemiImplicitEulerIntegrator();
+   * integrator.integrate(body, 1/60, world.gravity);
    */
   integrate(body: Body, dt: number, gravity: Vector2): void;
 }

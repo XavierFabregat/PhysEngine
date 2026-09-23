@@ -2,9 +2,10 @@ import type { Body } from '../types/Body.js';
 import type { Material } from '../types/Material.js';
 import { BodyType } from '../types/BodyType.js';
 import { createMaterial } from '../types/Material.js';
-import * as AABB from '../core/AABB.js';
 import { calculateCircleMass, calculateCircleInertia } from './utils.js';
 import { generateBodyId } from './idGenerator.js';
+import { computeShapeAABB } from './aabb.js';
+import { assertPositiveFinite } from './validate.js';
 
 /**
  * Configuration for creating a circle body.
@@ -25,10 +26,13 @@ export interface CircleConfig {
   /** Initial linear velocity (default: zero) */
   velocity?: { x: number; y: number };
 
-  /** Initial angular velocity in rad/s (default: 0) */
+  /** Initial angular velocity in rad/s (default: 0, positive = +x toward +y) */
   angularVelocity?: number;
 
-  /** Initial rotation in radians (default: 0) */
+  /**
+   * Initial rotation in radians (default: 0).
+   * Positive rotates +x toward +y (clockwise on a y-down screen).
+   */
   rotation?: number;
 
   /** Collision layer bitmask (default: 1) */
@@ -86,20 +90,22 @@ export const createCircle = (config: CircleConfig): Body => {
     userData,
   } = config;
 
+  assertPositiveFinite('createCircle', 'radius', radius);
+
   // Create material from config
   const material = createMaterial(materialConfig);
 
-  // Calculate mass properties
-  const isStatic = type === BodyType.STATIC || type === BodyType.KINEMATIC;
-  const mass = isStatic ? Infinity : calculateCircleMass(radius, material.density);
-  const invMass = isStatic ? 0 : 1 / mass;
-  const inertia = isStatic
+  // Calculate mass properties (static and kinematic bodies have infinite mass)
+  const hasInfiniteMass = type === BodyType.STATIC || type === BodyType.KINEMATIC;
+  if (!hasInfiniteMass) {
+    assertPositiveFinite('createCircle', 'material.density', material.density);
+  }
+  const mass = hasInfiniteMass ? Infinity : calculateCircleMass(radius, material.density);
+  const invMass = hasInfiniteMass ? 0 : 1 / mass;
+  const inertia = hasInfiniteMass
     ? Infinity
     : calculateCircleInertia(mass, radius);
-  const invInertia = isStatic ? 0 : 1 / inertia;
-
-  // Create AABB
-  const aabb = AABB.fromCenter(position, { x: radius, y: radius });
+  const invInertia = hasInfiniteMass ? 0 : 1 / inertia;
 
   // Create circle shape
   const shape = {
@@ -107,12 +113,15 @@ export const createCircle = (config: CircleConfig): Body => {
     radius,
   };
 
+  // Copy vectors so the body never aliases the caller's objects
+  const bodyPosition = { x: position.x, y: position.y };
+
   return {
     id: generateBodyId(),
     type,
-    position,
+    position: bodyPosition,
     rotation,
-    velocity,
+    velocity: { x: velocity.x, y: velocity.y },
     angularVelocity,
     force: { x: 0, y: 0 },
     torque: 0,
@@ -122,7 +131,7 @@ export const createCircle = (config: CircleConfig): Body => {
     invInertia,
     material,
     shape,
-    aabb,
+    aabb: computeShapeAABB(shape, bodyPosition, rotation),
     layer,
     collidesWith,
     isSensor,

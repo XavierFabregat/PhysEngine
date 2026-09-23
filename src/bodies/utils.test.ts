@@ -255,6 +255,48 @@ describe('Polygon Area, Mass & Inertia', () => {
     });
   });
 
+  describe('calculatePolygonInertia', () => {
+    const square = [
+      { x: -1, y: -1 },
+      { x: 1, y: -1 },
+      { x: 1, y: 1 },
+      { x: -1, y: 1 },
+    ];
+
+    it('should match the rectangle formula for a centred square', () => {
+      // 2x2 square, mass 4: I = m(w² + h²)/12 = 8/3
+      expect(calculatePolygonInertia(4, square)).toBeCloseTo(8 / 3, 10);
+    });
+
+    it('should be about the centroid regardless of offset from origin', () => {
+      // Origin well outside the polygon: previously abs(cross) broke this
+      const offset = square.map((v) => ({ x: v.x + 10, y: v.y - 7 }));
+      expect(calculatePolygonInertia(4, offset)).toBeCloseTo(8 / 3, 8);
+    });
+
+    it('should be independent of winding', () => {
+      const clockwise = [...square].reverse();
+      expect(calculatePolygonInertia(4, clockwise)).toBeCloseTo(8 / 3, 10);
+    });
+
+    it('should match the analytic value for a right triangle', () => {
+      // Legs a, b: I_centroid = m(a² + b²)/18
+      const triangle = [
+        { x: 5, y: 5 },
+        { x: 8, y: 5 },
+        { x: 5, y: 9 },
+      ];
+      expect(calculatePolygonInertia(6, triangle)).toBeCloseTo((6 * (9 + 16)) / 18, 10);
+    });
+
+    it('should return 0 for fewer than 3 vertices or zero area', () => {
+      expect(calculatePolygonInertia(1, [{ x: 0, y: 0 }, { x: 1, y: 0 }])).toBe(0);
+      expect(
+        calculatePolygonInertia(1, [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }])
+      ).toBe(0);
+    });
+  });
+
   describe('calculatePolygonCentroid', () => {
     it('should return origin for empty or degenerate polygon', () => {
       expect(calculatePolygonCentroid([])).toEqual({ x: 0, y: 0 });
@@ -412,6 +454,35 @@ describe('Polygon Validation', () => {
         { x: 0, y: 10 },
       ];
       expect(isConvex(vertices)).toBe(false);
+    });
+
+    it('should return false for a self-intersecting pentagram', () => {
+      // Every other vertex of a regular pentagon: all turns share a sign,
+      // but the outline winds around twice
+      const star = [0, 1, 2, 3, 4].map((i) => {
+        const angle = (i * 4 * Math.PI) / 5;
+        return { x: Math.cos(angle), y: Math.sin(angle) };
+      });
+      expect(isConvex(star)).toBe(false);
+    });
+
+    it('should return false for a bow-tie quadrilateral', () => {
+      const bowTie = [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+      ];
+      expect(isConvex(bowTie)).toBe(false);
+    });
+
+    it('should return false for collinear (zero-area) vertices', () => {
+      const line = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 2, y: 0 },
+      ];
+      expect(isConvex(line)).toBe(false);
     });
 
     it('should handle vertices in clockwise order', () => {

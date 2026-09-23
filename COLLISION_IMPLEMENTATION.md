@@ -1190,7 +1190,7 @@ bodyA.angularVelocity += angularImpulse * bodyA.invInertia;
 **Solutions:**
 1. Clamp restitution to [0, 1]
 2. Add damping (0.99x velocity each frame)
-3. Use symplectic integrator (Verlet handles this well)
+3. Use a symplectic integrator (the default semi-implicit Euler handles this well)
 
 ---
 
@@ -1346,7 +1346,7 @@ bodyA.angularVelocity += angularImpulse * bodyA.invInertia;
 **Before starting:**
 - [x] Bodies working (createCircle, createRectangle)
 - [x] World working (createWorld, step)
-- [x] Integration working (Verlet)
+- [x] Integration working (semi-implicit Euler)
 - [x] AABBs updating correctly
 - [x] Debug viewer showing bodies
 
@@ -1393,7 +1393,7 @@ World
   └─ resolver: CollisionResolver (pluggable) ⏳ To implement
 
 createWorld({
-  integrator: new VerletIntegrator(),
+  integrator: new SemiImplicitEulerIntegrator(),
   broadPhase: new BruteForceBroadPhase(),
   narrowPhase: new SATNarrowPhase(),
   resolver: new ImpulseResolver()

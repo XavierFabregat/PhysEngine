@@ -4,31 +4,32 @@ import type { Vector2 } from '../../core/Vector2.js';
 import * as Vec2 from '../../core/Vector2.js';
 
 /**
- * Verlet integration (velocity-less form).
- * 
- * Verlet integration is:
- * - Naturally stable for constraints and springs
- * - Position-based (good for games)
- * - Symplectic (conserves energy well)
- * - Simple to implement
- * 
- * This is a velocity-Verlet variant that maintains explicit velocities
- * for ease of use (pure Verlet stores only positions).
- * 
+ * Semi-implicit (symplectic) Euler integration.
+ *
+ * Velocity is updated first, then position is advanced with the *new*
+ * velocity. This reordering versus explicit Euler makes the scheme symplectic:
+ * - Stable for springs and oscillators (energy stays bounded instead of growing)
+ * - Cheap: one force evaluation per step
+ * - Keeps explicit velocities, so impulses can be applied directly
+ *
+ * Accuracy is first order: position error scales with dt. For free fall under
+ * gravity g, the position after time t is `½gt² + ½g·t·dt`
+ * (5.083 instead of 5.0 for g=10, t=1, dt=1/60).
+ *
  * Math:
  * - a = F/m (acceleration from force)
  * - v = v + a * dt (update velocity)
- * - p = p + v * dt (update position)
+ * - p = p + v * dt (update position with the new velocity)
  * - Same for angular: α = τ/I, ω = ω + α * dt, θ = θ + ω * dt
- * 
+ *
  * @example
- * const integrator = new VerletIntegrator();
+ * const integrator = new SemiImplicitEulerIntegrator();
  * const world = createWorld({ integrator });
  */
-export class VerletIntegrator implements Integrator {
+export class SemiImplicitEulerIntegrator implements Integrator {
   /**
-   * Integrates a body's motion using Verlet integration.
-   * 
+   * Integrates a body's motion using semi-implicit Euler integration.
+   *
    * @param body - The body to integrate (mutated in place)
    * @param dt - Time step in seconds
    * @param gravity - Global gravity vector
@@ -43,11 +44,13 @@ export class VerletIntegrator implements Integrator {
     if (body.type === 'kinematic') {
       // Update position from velocity
       body.position = Vec2.add(body.position, Vec2.scale(body.velocity, dt));
-      
+
       // Update rotation from angular velocity
       body.rotation += body.angularVelocity * dt;
-      
-      // Don't apply forces to kinematic bodies
+
+      // Forces are ignored, but still cleared so they don't accumulate
+      body.force = { x: 0, y: 0 };
+      body.torque = 0;
       return;
     }
 
@@ -60,20 +63,20 @@ export class VerletIntegrator implements Integrator {
     // Linear integration
     // a = F / m (using invMass for efficiency)
     const acceleration = Vec2.scale(body.force, body.invMass);
-    
+
     // v = v + a * dt
     body.velocity = Vec2.add(body.velocity, Vec2.scale(acceleration, dt));
-    
+
     // p = p + v * dt
     body.position = Vec2.add(body.position, Vec2.scale(body.velocity, dt));
 
     // Angular integration
     // α = τ / I (using invInertia for efficiency)
     const angularAcceleration = body.torque * body.invInertia;
-    
+
     // ω = ω + α * dt
     body.angularVelocity += angularAcceleration * dt;
-    
+
     // θ = θ + ω * dt
     body.rotation += body.angularVelocity * dt;
 
@@ -83,3 +86,11 @@ export class VerletIntegrator implements Integrator {
   }
 }
 
+/**
+ * @deprecated This integrator was always semi-implicit Euler, not Verlet.
+ * Use {@link SemiImplicitEulerIntegrator}. Kept as an alias so existing
+ * imports keep working; it will be removed in a future major version.
+ */
+export const VerletIntegrator = SemiImplicitEulerIntegrator;
+/** @deprecated Use {@link SemiImplicitEulerIntegrator}. */
+export type VerletIntegrator = SemiImplicitEulerIntegrator;
