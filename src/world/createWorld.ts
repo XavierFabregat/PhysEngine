@@ -55,7 +55,9 @@ export interface WorldConfig {
    * Default: ImpulseResolver (industry standard)
    * 
    * Swap for different behavior:
-   * - ImpulseResolver: Restitution + positional correction, linear only (default)
+   * - ImpulseResolver: Restitution + positional correction, linear only (default).
+   *   Pass `new ImpulseResolver({ restitutionCombine: 'max' })` to change how
+   *   two bodies' restitution combine ('min' default, 'max', 'average', 'multiply', or a function)
    * - PositionResolver: Simple, good for simple games (future)
    * - IterativeResolver: More accurate, slower (future)
    */

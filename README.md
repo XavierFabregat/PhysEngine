@@ -53,7 +53,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 - **Body factories** - `createCircle`, `createRectangle` (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
-- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (circle-circle, circle-rectangle incl. rotated; extensible via `register`), `ImpulseResolver` (restitution + positional correction; sensors detect without responding)
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (circle-circle, circle-rectangle incl. rotated; extensible via `register`), `ImpulseResolver` (restitution with a configurable combine rule + positional correction; sensors detect without responding)
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -138,6 +138,19 @@ function update() {
   console.log(ball.position); // falls, then comes to rest on the floor
   requestAnimationFrame(update);
 }
+```
+
+### Choosing how bounciness combines
+
+When two bodies collide, their restitution values are combined into one. The default rule is `'min'` (the less bouncy body wins, so floors need a high restitution for balls to bounce). Use `'max'` for the common game-engine behaviour where a bouncy ball bounces on any surface:
+
+```typescript
+import { createWorld, ImpulseResolver } from '@xavifabregat/physengine';
+
+const world = createWorld({
+  resolver: new ImpulseResolver({ restitutionCombine: 'max' }),
+  // also: 'min' (default) | 'average' | 'multiply' | ((a, b) => number)
+});
 ```
 
 ### Debug rendering in the browser

@@ -305,6 +305,49 @@ describe('ImpulseResolver', () => {
     });
   });
 
+  describe('restitution combine rule', () => {
+    // Head-on, equal masses, approach speed 20: separation speed = e_combined * 20
+    const separationSpeed = (resolverUnderTest: ImpulseResolver, eA: number, eB: number) => {
+      const a = createCircle({ radius: 10, velocity: { x: 10, y: 0 }, material: { restitution: eA } });
+      const b = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 },
+        material: { restitution: eB }
+      });
+      const contact: Contact = { point: { x: 10, y: 0 }, normal: { x: 1, y: 0 }, depth: 5 };
+      resolverUnderTest.resolve(a, b, contact);
+      return b.velocity.x - a.velocity.x;
+    };
+
+    it('should default to min', () => {
+      expect(separationSpeed(new ImpulseResolver(), 1, 0.2)).toBeCloseTo(0.2 * 20, 10);
+    });
+
+    it.each([
+      ['min', 0.2],
+      ['max', 1],
+      ['average', 0.6],
+      ['multiply', 0.2],
+    ] as const)('should combine with %s', (rule, expected) => {
+      const custom = new ImpulseResolver({ restitutionCombine: rule });
+      expect(separationSpeed(custom, 1, 0.2)).toBeCloseTo(expected * 20, 10);
+    });
+
+    it('should accept a custom combine function', () => {
+      const geometricMean = new ImpulseResolver({
+        restitutionCombine: (a, b) => Math.sqrt(a * b)
+      });
+      expect(separationSpeed(geometricMean, 0.9, 0.4)).toBeCloseTo(0.6 * 20, 10);
+    });
+
+    it('should reject an unknown rule name', () => {
+      expect(
+        () => new ImpulseResolver({ restitutionCombine: 'maximum' as never })
+      ).toThrow(/Unknown combine rule "maximum"/);
+    });
+  });
+
   describe('static and kinematic bodies', () => {
     it('should not move static bodies', () => {
       const staticA = createCircle({

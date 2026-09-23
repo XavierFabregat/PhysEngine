@@ -93,6 +93,7 @@ export type { ShapeDetector } from './systems/narrowphase/ShapeDispatchNarrowPha
 
 // Resolvers
 export { ImpulseResolver } from './systems/resolvers/ImpulseResolver.js';
+export type { ImpulseResolverOptions } from './systems/resolvers/ImpulseResolver.js';
 
 // ============================================================
 // DEBUG RENDERER
@@ -110,7 +111,8 @@ export { debugDraw } from './debug/debugDraw.js';
 // ============================================================
 
 // Material utilities
-export { createMaterial, DEFAULT_MATERIAL } from './types/Material.js';
+export { createMaterial, DEFAULT_MATERIAL, resolveCombineRule } from './types/Material.js';
+export type { CombineRule } from './types/Material.js';
 
 // Shape type guards
 export { isCircle, isRectangle, isPolygon } from './types/Shape.js';

@@ -5,6 +5,7 @@ import { addBody } from './body';
 import { createCircle, resetBodyIdCounter } from '../bodies/createCircle';
 import { createRectangle } from '../bodies/createRectangle';
 import { BodyType } from '../types/BodyType';
+import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
 
 describe('step', () => {
   beforeEach(() => {
@@ -401,6 +402,31 @@ describe('step', () => {
         expect(ratio).toBeGreaterThan(0.58);
         expect(ratio).toBeLessThan(0.66); // e² = 0.64
       }
+    });
+
+    it('should honour the resolver restitution rule set through createWorld', () => {
+      const firstBounceHeight = (restitutionCombine: 'min' | 'max') => {
+        const world = createWorld({
+          gravity: { x: 0, y: 400 },
+          resolver: new ImpulseResolver({ restitutionCombine }),
+        });
+        // Default floor material: restitution 0.2
+        addBody(world, createRectangle({ position: { x: 0, y: 580 }, width: 800, height: 40, type: BodyType.STATIC }));
+        const ball = createCircle({ position: { x: 0, y: 100 }, radius: 20, material: { restitution: 1 } });
+        addBody(world, ball);
+
+        let previousVy = 0;
+        for (let i = 0; i < 600; i++) {
+          step(world, 1 / 60);
+          if (previousVy < 0 && ball.velocity.y >= 0) return 540 - ball.position.y;
+          previousVy = ball.velocity.y;
+        }
+        return 0;
+      };
+
+      // Dropped from 440 px above the resting height
+      expect(firstBounceHeight('min')).toBeLessThan(440 * 0.2 ** 2 * 1.1); // e = 0.2
+      expect(firstBounceHeight('max')).toBeGreaterThan(440 * 0.95); // e = 1
     });
 
     it('should bounce off a rectangle with the lower restitution of the pair', () => {
