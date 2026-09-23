@@ -12,6 +12,7 @@ const DEFAULT_OPTIONS: Required<DebugDrawOptions> = {
   showVelocities: false,
   showCenterOfMass: false,
   showIds: false,
+  showContacts: false,
 };
 
 /**
@@ -25,7 +26,11 @@ const COLORS = {
   VELOCITY: '#ff0000',    // Red for velocity vectors
   CENTER_OF_MASS: '#ff00ff', // Magenta for center of mass
   ID: '#ffffff',          // White for body ID labels
+  CONTACT: '#ffff00',     // Yellow for contact points and normals
 };
+
+/** Length of drawn contact normals (world units). */
+const CONTACT_NORMAL_LENGTH = 12;
 
 /**
  * Renders a physics world using a debug renderer.
@@ -146,5 +151,15 @@ export const debugDraw = (
       renderer.drawText(body.position, body.id, COLORS.ID);
     }
   }
-};
 
+  // Draw contacts from the last step (on top of the bodies)
+  if (opts.showContacts) {
+    for (const { contact } of world.contacts) {
+      const tip = Vec2.add(contact.point, Vec2.scale(contact.normal, CONTACT_NORMAL_LENGTH));
+      renderer.drawLine(contact.point, tip, COLORS.CONTACT);
+      for (const p of contact.points?.length ? contact.points : [contact.point]) {
+        renderer.drawPoint(p, COLORS.CONTACT);
+      }
+    }
+  }
+};

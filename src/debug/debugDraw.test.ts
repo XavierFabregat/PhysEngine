@@ -102,4 +102,23 @@ describe('debugDraw', () => {
       'drawPoint', // center of mass
     ]);
   });
+
+  it('should draw contact points and normals when showContacts is enabled', () => {
+    const world = createWorld();
+    world.contacts = [{
+      bodyA: createCircle({ radius: 5 }),
+      bodyB: createCircle({ radius: 5 }),
+      contact: { point: { x: 10, y: 20 }, points: [{ x: 8, y: 20 }, { x: 12, y: 20 }], normal: { x: 0, y: 1 }, depth: 1 },
+    }];
+    const renderer = createRecorder();
+
+    debugDraw(world, renderer, { showBodies: false, showContacts: true });
+
+    expect(renderer.calls).toEqual([
+      ['clear'],
+      ['drawLine', { x: 10, y: 20 }, { x: 10, y: 32 }, '#ffff00'],
+      ['drawPoint', { x: 8, y: 20 }, '#ffff00'],
+      ['drawPoint', { x: 12, y: 20 }, '#ffff00'],
+    ]);
+  });
 });

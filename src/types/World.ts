@@ -4,6 +4,8 @@ import type { Integrator } from './Integrator.js';
 import type { BroadPhase } from './BroadPhase.js';
 import type { NarrowPhase } from './NarrowPhase.js';
 import type { CollisionResolver } from './CollisionResolver.js';
+import type { ContactPair } from './Contact.js';
+import type { CollisionEvents } from './Events.js';
 
 /**
  * The physics world - container for all bodies and simulation settings.
@@ -65,5 +67,17 @@ export interface World {
    * Pluggable system - can swap Impulse, Position, or custom resolvers.
    */
   resolver: CollisionResolver;
-}
 
+  /**
+   * Contacts found in the last step (touching body pairs with their contact
+   * normal, points and depth). Replaced by every step(); read it for game
+   * logic or debug drawing, but don't mutate it.
+   */
+  contacts: ContactPair[];
+
+  /**
+   * Collision event handlers and state. Use onCollisionStart,
+   * onCollisionActive and onCollisionEnd rather than editing this directly.
+   */
+  events: CollisionEvents;
+}

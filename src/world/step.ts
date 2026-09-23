@@ -1,6 +1,7 @@
 import type { World } from '../types/World.js';
 import type { ContactPair } from '../types/Contact.js';
 import { updateBodyAABB } from '../bodies/aabb.js';
+import { dispatchCollisionEvents } from './events.js';
 
 /**
  * Advances the physics simulation by one time step.
@@ -18,6 +19,8 @@ import { updateBodyAABB } from '../bodies/aabb.js';
  * 6. Correct positions - push apart any remaining overlap
  * 7. AABB update - bounding boxes match the final positions
  * 8. Time increment
+ * 9. Collision events - start/active/end handlers, after the step is complete
+ *    (so they may add or remove bodies)
  *
  * Custom systems without the split methods keep working: an integrator with
  * only `integrate()` runs first (old order), and a resolver with only
@@ -93,4 +96,8 @@ export const step = (world: World, dt: number): void => {
 
   // 8. Increment simulation time
   world.time += dt;
+
+  // 9. Collision events (last, so handlers see the finished step)
+  world.contacts = contacts;
+  dispatchCollisionEvents(world, contacts);
 };
