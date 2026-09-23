@@ -8,7 +8,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ## Status: In Development 🚧
 
-**Current Version:** 0.3.0  
+**Current Version:** 0.4.0  
 **Core Math Layer:** ✅ Complete  
 **Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
 **Collision Detection & Response:** ✅ All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase; impulses with rotation and Coulomb friction (balls roll, boxes tip and slide). Stable stacking: contacts are solved between the velocity and position halves of each step, iteratively and warm-started (a 10-box tower holds to 0.1 px)
