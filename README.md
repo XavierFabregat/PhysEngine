@@ -89,6 +89,20 @@ See [examples/README.md](./examples/README.md) for details.
 npm install @xavifabregat/physengine
 ```
 
+Or straight from a CDN, no build step (single-file bundles, ~10 KB gzipped; published from the release after v0.4.0):
+
+```html
+<!-- Classic script: exposes a global `PhysEngine` -->
+<script src="https://cdn.jsdelivr.net/npm/@xavifabregat/physengine"></script>
+
+<!-- ES module -->
+<script type="module">
+  import { createWorld, step } from 'https://cdn.jsdelivr.net/npm/@xavifabregat/physengine/dist/physengine.min.js';
+</script>
+```
+
+Pin a version in production (`@xavifabregat/physengine@<version>/...`). Bundlers can also import the single file via `@xavifabregat/physengine/bundle`.
+
 Or try it out from source:
 ```bash
 git clone https://github.com/XavierFabregat/PhysEngine.git
@@ -368,7 +382,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
 Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
-- **Distribution builds** - Single-file ESM and a `<script>`-tag build
 - **Forces API** - `applyForce` / `applyImpulse` / `applyTorque`, including at a point
 - **Continuous collision** - Fast, small bodies can still tunnel through thin ones
 - **Chain shapes** - Static polylines for terrain and drawn lines
