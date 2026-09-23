@@ -168,7 +168,7 @@ Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whi
 2. ✅ **Collision strength in contacts and events** — `contact.impactSpeed`, `contact.normalImpulse`, `contact.tangentImpulse` (done; totals per contact rather than per point).
    - *Why:* Knockdown scores hits with `impactSpeed()` in `kit.js`, which snapshots every body's velocity before each step because after the step the solver has already stopped them. The resolver already accumulates these impulses.
    - *Done when:* Knockdown scores from the event data alone; impulses sum to the momentum change in a unit test.
-3. **Forces API** *(moved up from v1.0 Forces below)* — `applyForce(body, force, point?)`, `applyImpulse(body, impulse, point?)`, `applyTorque(body, torque)`.
+3. ✅ **Forces API** *(moved up from v1.0 Forces below)* — `applyForce(body, force, point?)`, `applyImpulse(body, impulse, point?)`, `applyTorque(body, torque)` (done).
    - *Why:* the rover writes `body.force` directly and the slingshot overwrites `velocity`; neither can push at a point, so there is no spin from an off-centre kick.
    - *Done when:* an off-centre impulse produces the analytic linear + angular velocity change.
 4. ✅ **Distribution builds** — `dist/physengine.min.js` (ESM) and `dist/physengine.iife.min.js` (global `PhysEngine`), checked in CI (done; the Playground switches to the published file with the next release).
@@ -243,9 +243,9 @@ Core physics engine with all essential features for 2D game development.
 
 #### Forces
 - [x] Global gravity
-- [ ] `applyForce(force, point?)` - continuous force *(moved up: Next #3)*
-- [ ] `applyImpulse(impulse, point?)` - instant impulse
-- [ ] `applyTorque(amount)` - rotational force
+- [x] `applyForce(force, point?)` - continuous force *(moved up: Next #3)*
+- [x] `applyImpulse(impulse, point?)` - instant impulse
+- [x] `applyTorque(amount)` - rotational force
 
 #### Events
 - [x] `collisionStart` - bodies begin touching

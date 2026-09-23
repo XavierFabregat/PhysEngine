@@ -52,6 +52,8 @@ export type { PolygonConfig } from './bodies/createPolygon.js';
 
 export { computeShapeAABB, updateBodyAABB } from './bodies/aabb.js';
 
+export { applyForce, applyImpulse, applyTorque } from './bodies/forces.js';
+
 // ============================================================
 // WORLD
 // ============================================================

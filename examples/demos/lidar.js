@@ -9,6 +9,7 @@ import {
   createPolygon,
   addBody,
   raycast,
+  applyForce,
   BodyType,
 } from 'physengine';
 import { WIDTH, HEIGHT, drawPaper, drawBody, defaultStyle, stepWorld, seeded } from './kit.js';
@@ -30,7 +31,7 @@ export default {
     'Every frame the rover casts 180 rays; hits leave fading dots on the map.',
     'Turn off "Show world" to navigate by lidar alone. Crates can be pushed.',
   ],
-  features: ['raycast ×180 / frame', 'Query filters', 'Zero gravity', 'Forces', 'Damping', 'Pushable bodies'],
+  features: ['raycast ×180 / frame', 'Query filters', 'Zero gravity', 'applyForce', 'Damping', 'Pushable bodies'],
   controls: [
     { id: 'world', label: 'Show world', kind: 'toggle', checked: true },
     { id: 'rays', label: 'Show rays', kind: 'toggle', checked: true },
@@ -148,7 +149,7 @@ export default {
     return {
       update() {
         const dir = driveDirection();
-        rover.force = { x: dir.x * THRUST * rover.mass, y: dir.y * THRUST * rover.mass };
+        applyForce(rover, { x: dir.x * THRUST * rover.mass, y: dir.y * THRUST * rover.mass });
         stepWorld(world);
 
         scan = doScan();
