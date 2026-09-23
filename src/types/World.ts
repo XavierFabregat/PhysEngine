@@ -2,13 +2,14 @@ import type { Body } from './Body.js';
 import type { Vector2 } from '../core/Vector2.js';
 import type { Integrator } from './Integrator.js';
 import type { BroadPhase } from './BroadPhase.js';
+import type { NarrowPhase } from './NarrowPhase.js';
 import type { CollisionResolver } from './CollisionResolver.js';
 
 /**
  * The physics world - container for all bodies and simulation settings.
  * 
- * The world is mutable for performance (physics engines update 60+ times per second).
- * Bodies within the world should be treated as immutable data.
+ * The world and its bodies are mutable for performance (physics engines
+ * update 60+ times per second); step() updates bodies in place.
  */
 export interface World {
   /**
@@ -49,6 +50,14 @@ export interface World {
    * Pluggable system - can swap BruteForce, SpatialHash, QuadTree, etc.
    */
   broadPhase: BroadPhase;
+
+  /**
+   * Narrow phase collision detection system.
+   * Precise shape-vs-shape tests for pairs the broad phase reports.
+   * Pluggable system - defaults to ShapeDispatchNarrowPhase (circle/circle,
+   * circle/rectangle); register more detectors or swap in a custom one.
+   */
+  narrowPhase: NarrowPhase;
 
   /**
    * Collision resolver for collision response.

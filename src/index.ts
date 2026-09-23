@@ -29,6 +29,10 @@ export type { Material } from './types/Material.js';
 export type { Shape, CircleShape, RectangleShape, PolygonShape } from './types/Shape.js';
 export type { World } from './types/World.js';
 export type { Integrator } from './types/Integrator.js';
+export type { BroadPhase, BodyPair } from './types/BroadPhase.js';
+export type { NarrowPhase } from './types/NarrowPhase.js';
+export type { CollisionResolver } from './types/CollisionResolver.js';
+export type { Contact, ContactPair } from './types/Contact.js';
 
 // Body type constants (exported as value)
 export { BodyType } from './types/BodyType.js';
@@ -83,6 +87,9 @@ export { BruteForceBroadPhase } from './systems/broadphase/BruteForce.js';
 
 // Narrow phase
 export { detectCircleCircle } from './systems/narrowphase/circleCircle.js';
+export { detectCircleRectangle } from './systems/narrowphase/circleRectangle.js';
+export { ShapeDispatchNarrowPhase } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
+export type { ShapeDetector } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
 
 // Resolvers
 export { ImpulseResolver } from './systems/resolvers/ImpulseResolver.js';

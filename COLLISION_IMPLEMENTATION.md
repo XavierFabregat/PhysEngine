@@ -1351,27 +1351,27 @@ bodyA.angularVelocity += angularImpulse * bodyA.invInertia;
 - [x] Debug viewer showing bodies
 
 **Phase 1: Foundation**
-- [ ] Contact type defined
-- [ ] BroadPhase interface
-- [ ] NarrowPhase interface  
-- [ ] CollisionResolver interface
+- [x] Contact type defined
+- [x] BroadPhase interface
+- [x] NarrowPhase interface
+- [x] CollisionResolver interface
 
 **Phase 2: Simple Collision**
-- [ ] BruteForceBroadPhase
-- [ ] Circle-circle detection
-- [ ] Position correction
-- [ ] Basic impulse (no rotation)
-- [ ] Visible in debug viewer
+- [x] BruteForceBroadPhase
+- [x] Circle-circle detection
+- [x] Position correction
+- [x] Basic impulse (no rotation)
+- [x] Visible in debug viewer
 
 **Phase 3: Complete Narrow Phase**
-- [ ] Circle-rectangle detection
+- [x] Circle-rectangle detection
 - [ ] Rectangle-rectangle (SAT)
 - [ ] All shape combinations working
 
 **Phase 4: Full Response**
 - [ ] Impulse with rotation
 - [ ] Friction
-- [ ] Restitution (bounciness)
+- [x] Restitution (bounciness)
 
 **Phase 5: Polish**
 - [ ] Iterative solver (optional)

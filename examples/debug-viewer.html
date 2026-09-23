@@ -357,12 +357,15 @@
         material: { restitution: 1.0, density: 1000 }
       }));
 
+      // Floor and walls are fully elastic: restitution combines by min,
+      // so each ball's own restitution decides how it bounces
       // Floor
       addBody(world, createRectangle({
         position: { x: 400, y: 580 },
         width: 800,
         height: 40,
-        type: BodyType.STATIC
+        type: BodyType.STATIC,
+        material: { restitution: 1 }
       }));
 
       // Walls
@@ -370,14 +373,16 @@
         position: { x: 20, y: 300 },
         width: 40,
         height: 600,
-        type: BodyType.STATIC
+        type: BodyType.STATIC,
+        material: { restitution: 1 }
       }));
 
       addBody(world, createRectangle({
         position: { x: 780, y: 300 },
         width: 40,
         height: 600,
-        type: BodyType.STATIC
+        type: BodyType.STATIC,
+        material: { restitution: 1 }
       }));
 
       // More bouncing balls!

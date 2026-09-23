@@ -11,7 +11,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 **Current Version:** 0.2.0  
 **Core Math Layer:** ✅ Complete  
 **Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
-**Collision Detection & Response:** 🚧 Circle-circle only (brute-force broad phase, impulse bounce, no friction or rotation yet)
+**Collision Detection & Response:** 🚧 Circle-circle and circle-rectangle (brute-force broad phase, impulse bounce, no friction or rotation yet; rectangle-rectangle pending)
 
 ## Conventions
 
@@ -53,7 +53,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 - **Body factories** - `createCircle`, `createRectangle` (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
-- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), circle-circle narrow phase, `ImpulseResolver` (restitution + positional correction; sensors detect without responding)
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (circle-circle, circle-rectangle incl. rotated; extensible via `register`), `ImpulseResolver` (restitution + positional correction; sensors detect without responding)
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -135,7 +135,7 @@ addBody(world, ball);
 
 function update() {
   step(world, 1 / 60);
-  console.log(ball.position); // falls through the floor: circle-rectangle collisions aren't implemented yet
+  console.log(ball.position); // falls, then comes to rest on the floor
   requestAnimationFrame(update);
 }
 ```
@@ -242,7 +242,7 @@ PhysEngine/
 │   ├── systems/
 │   │   ├── integrators/   # SemiImplicitEuler (default)
 │   │   ├── broadphase/    # BruteForce
-│   │   ├── narrowphase/   # circleCircle
+│   │   ├── narrowphase/   # circleCircle, circleRectangle, ShapeDispatch
 │   │   └── resolvers/     # ImpulseResolver
 │   ├── debug/             # DebugRenderer interface, debugDraw, CanvasRenderer
 │   ├── index.ts           # Main (headless) entry point
@@ -257,7 +257,7 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Narrow phase** - Circle-rectangle, then polygon/rectangle SAT
+- **Narrow phase** - Rectangle/polygon SAT with a 2-point contact manifold
 - **Collision Response** - Friction and rotational (angular) impulses
 - **Broad phase** - Spatial hash once body counts demand it
 - **Polygon bodies** - `createPolygon` (mass/inertia helpers already in place)

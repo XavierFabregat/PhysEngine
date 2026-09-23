@@ -2,9 +2,11 @@ import type { World } from '../types/World.js';
 import type { Vector2 } from '../core/Vector2.js';
 import type { Integrator } from '../types/Integrator.js';
 import type { BroadPhase } from '../types/BroadPhase.js';
+import type { NarrowPhase } from '../types/NarrowPhase.js';
 import type { CollisionResolver } from '../types/CollisionResolver.js';
 import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicitEuler.js';
 import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce.js';
+import { ShapeDispatchNarrowPhase } from '../systems/narrowphase/ShapeDispatchNarrowPhase.js';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver.js';
 
 /**
@@ -40,11 +42,20 @@ export interface WorldConfig {
   broadPhase?: BroadPhase;
 
   /**
+   * Narrow phase collision detection system.
+   * Default: ShapeDispatchNarrowPhase (circle/circle, circle/rectangle)
+   *
+   * Extend it with `register(typeA, typeB, detector)` or swap in any
+   * implementation of the NarrowPhase interface.
+   */
+  narrowPhase?: NarrowPhase;
+
+  /**
    * Collision resolver for collision response.
    * Default: ImpulseResolver (industry standard)
    * 
    * Swap for different behavior:
-   * - ImpulseResolver: Accurate, handles friction well (default)
+   * - ImpulseResolver: Restitution + positional correction, linear only (default)
    * - PositionResolver: Simple, good for simple games (future)
    * - IterativeResolver: More accurate, slower (future)
    */
@@ -84,6 +95,7 @@ export const createWorld = (config: WorldConfig = {}): World => {
   // Fresh system instances per world so stateful systems are never shared
   const integrator = config.integrator ?? new SemiImplicitEulerIntegrator();
   const broadPhase = config.broadPhase ?? new BruteForceBroadPhase();
+  const narrowPhase = config.narrowPhase ?? new ShapeDispatchNarrowPhase();
   const resolver = config.resolver ?? new ImpulseResolver();
 
   return {
@@ -92,6 +104,7 @@ export const createWorld = (config: WorldConfig = {}): World => {
     time: 0,
     integrator,
     broadPhase,
+    narrowPhase,
     resolver,
   };
 };

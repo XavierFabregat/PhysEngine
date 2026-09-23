@@ -1,6 +1,5 @@
 import type { World } from '../types/World.js';
 import { updateBodyAABB } from '../bodies/aabb.js';
-import { detectCircleCircle } from '../systems/narrowphase/circleCircle.js';
 
 /**
  * Advances the physics simulation by one time step.
@@ -58,9 +57,8 @@ export const step = (world: World, dt: number): void => {
     // Type guard - should never happen
     if (!bodyA || !bodyB) continue;
 
-    // Narrow phase - precise collision detection
-    // Currently only supports circle-circle
-    const contact = detectCircleCircle(bodyA, bodyB);
+    // Narrow phase - precise collision detection (dispatches on shape pair)
+    const contact = world.narrowPhase.detect(bodyA, bodyB);
 
     // If collision detected, resolve it
     if (contact) {
