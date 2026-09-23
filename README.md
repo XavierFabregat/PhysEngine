@@ -66,7 +66,9 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ## Examples
 
-See the [`examples/`](./examples) folder for interactive terminal demos:
+See [`examples/demos/`](./examples/demos) for the **Playground**: four browser toys built on the engine (slingshot vs. towers, Galton board, draw-a-ramp puzzle, lidar rover).
+
+The [`examples/`](./examples) folder also has terminal demos:
 
 - 🪐 **[Orbit Visualizer](./examples/orbit.ts)** - Planets orbiting using Transform rotations
 - ⚽ **[Bouncing Balls](./examples/bouncing-balls.ts)** - Vector math and AABB collision detection
