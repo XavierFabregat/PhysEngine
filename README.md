@@ -346,10 +346,14 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Continuous collision** - Fast, small bodies can still tunnel through thin ones (a body moving farther than the pair's combined size in one step)
-- **Extreme mass ratios** - Keep ratios under ~100:1 (Box2D recommends 10:1); at 1000:1 a heavy body still presses a light one ~9 px into the floor
-- **Broad phase** - Spatial hash once body counts demand it
-- **Constraints** - Springs, rods, pins
+Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
+- **Damping** - Linear/angular damping so bodies slow down on their own (the Lidar demo applies drag by hand)
+- **Collision strength** - Contact impulses and impact speed in events (Knockdown computes them itself)
+- **Distribution builds** - Single-file ESM and a `<script>`-tag build
+- **Forces API** - `applyForce` / `applyImpulse` / `applyTorque`, including at a point
+- **Continuous collision** - Fast, small bodies can still tunnel through thin ones
+- **Chain shapes** - Static polylines for terrain and drawn lines
+- **Then** - Spatial broad phase for bodies and queries, sleeping, configurable world scale, constraints
 
 ## Design Goals
 

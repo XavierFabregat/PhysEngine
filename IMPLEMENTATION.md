@@ -154,6 +154,51 @@ src/
 
 ## Version Roadmap
 
+### Next — lessons from the Playground demos
+
+Building the four demos in `examples/demos/` (Knockdown, Galton Board, Ramp Sketch, Lidar Rover) on v0.4.0 showed where game code had to work around the engine. These items are ordered by what they unlock; several were already on the roadmap further down and are moved up here (marked *moved up*).
+
+Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whichever lands first.
+
+#### Tier 1: small, directly demanded
+
+1. **Damping** — `linearDamping` and `angularDamping` per body, optionally rolling resistance.
+   - *Why:* nothing ever slows down on its own. `lidar.js` multiplies the rover's and crates' velocities by 0.9/0.95 every frame by hand; rolling balls in Ramp Sketch roll forever on flat ground. Blocks top-down games (pool, racing, space).
+   - *Done when:* a body with damping d loses speed as `v·e^(−d·t)` (tested against the analytic curve); the Lidar demo drops its manual drag.
+2. **Collision strength in contacts and events** — `normalImpulse`, `tangentImpulse` per contact point and the pair's `impactSpeed`, passed to `onCollisionStart`/`onCollisionActive`.
+   - *Why:* Knockdown scores hits with `impactSpeed()` in `kit.js`, which snapshots every body's velocity before each step because after the step the solver has already stopped them. The resolver already accumulates these impulses.
+   - *Done when:* Knockdown scores from the event data alone; impulses sum to the momentum change in a unit test.
+3. **Forces API** *(moved up from v1.0 Forces below)* — `applyForce(body, force, point?)`, `applyImpulse(body, impulse, point?)`, `applyTorque(body, torque)`.
+   - *Why:* the rover writes `body.force` directly and the slingshot overwrites `velocity`; neither can push at a point, so there is no spin from an off-centre kick.
+   - *Done when:* an off-centre impulse produces the analytic linear + angular velocity change.
+4. **Distribution builds** — a single-file ESM bundle (`dist/physengine.min.js`) plus an IIFE/UMD build exposing a global, both in the npm package.
+   - *Why:* the Playground artifact failed because the package is 34 small ES modules; it works only because jsDelivr's `/+esm` bundles it on the fly. A single file drops into a `<script>` tag, CodePen, or a sandboxed page.
+   - *Done when:* the Playground loads the published bundle file directly; CI checks both builds import cleanly.
+
+#### Tier 2: the demos were tuned around these
+
+5. **Continuous collision detection** *(moved up from v1.2)* — time-of-impact for opt-in fast bodies (`isBullet` already exists on bodies but does nothing).
+   - *Why:* the slingshot's launch speed is capped at 960 px/s on purpose: faster balls tunnel through 20 px planks.
+   - *Done when:* a 3000 px/s ball can't pass through a 10 px wall (the tunneling sweep from the audit reports 0/50).
+6. **Chain / edge shapes** *(moved up from v2.1)* — a static polyline shape, `createChain(points)`.
+   - *Why:* Ramp Sketch turns each stroke into dozens of overlapping rectangles: bumpy joints and one body per segment.
+   - *Done when:* a ball rolls along a drawn chain without bumps at the joints; Ramp Sketch uses one chain per stroke.
+7. **Spatial acceleration for queries** *(extends the Spatial Hash broad phase in v1.0 and v1.1 Queries)* — `raycast`/`queryAABB` use the broad phase instead of scanning every body; add `raycastAll`, `queryRadius`, and a batch raycast.
+   - *Why:* the Lidar rover casts 180 rays a frame, each against every body; the Galton board runs ~90 balls against ~175 pegs with the O(n²) broad phase.
+8. **Sleeping** *(moved up from v1.1 Performance)*.
+   - *Why:* the settled Galton pile and the demo stacks are fully simulated every frame.
+9. **Configurable world scale** — `unitsPerMeter` or one tolerance config for the solver's constants.
+   - *Why:* position slop (0.01), SAT contact margin (0.5) and restitution threshold (10/s) are hard-coded for pixel-scale worlds; a world in metres would behave badly.
+
+#### Tier 3: developer experience (every demo rewrote these)
+
+10. **Fixed-timestep runner** — `createRunner(world, { dt, maxSteps, onStep })`, optionally with render interpolation. *Why:* every demo shares the accumulator loop in `kit.js` (`startLoop`).
+11. **Rendering helpers** — export `getWorldVertices(body)`; let `debugDraw` take a style callback with fills. *Why:* `kit.js` reimplements the vertex transform the engine has internally (`toWorldPolygon`) and a filled, themeable renderer, because `debugDraw` only draws fixed-colour outlines.
+12. **Typed `userData`** — a generic `Body<TUserData>` (or a `tag` field). *Why:* all demos do untyped `body.userData?.kind === 'ball'` checks.
+13. **Mass-ratio warnings** — a dev-mode warning when contacting bodies exceed ~100:1. *Why:* the v0.3.0 density default change silently made the demo balls 1000× heavier than the boxes, which crushed them into the floor until the densities were rescaled.
+
+---
+
 ### v1.0 - Foundation
 
 Core physics engine with all essential features for 2D game development.
@@ -198,7 +243,7 @@ Core physics engine with all essential features for 2D game development.
 
 #### Forces
 - [x] Global gravity
-- [ ] `applyForce(force, point?)` - continuous force
+- [ ] `applyForce(force, point?)` - continuous force *(moved up: Next #3)*
 - [ ] `applyImpulse(impulse, point?)` - instant impulse
 - [ ] `applyTorque(amount)` - rotational force
 
@@ -246,7 +291,7 @@ Core physics engine with all essential features for 2D game development.
 Optimizations and quality-of-life improvements.
 
 #### Performance
-- [ ] Body sleeping/deactivation system
+- [ ] Body sleeping/deactivation system *(moved up: Next #8)*
 - [ ] Sleep islands (groups of connected bodies sleep together)
 - [x] Warm starting for the contact solver (joint constraints still to come)
 
@@ -260,12 +305,12 @@ Optimizations and quality-of-life improvements.
 - [ ] Brute force (for < 50 bodies)
 
 #### Queries
-- [ ] `queryRadius(center, radius, filter?)` - bodies in circle
-- [ ] Raycast: return all hits (not just first)
+- [ ] `queryRadius(center, radius, filter?)` - bodies in circle *(moved up: Next #7)*
+- [ ] Raycast: return all hits (not just first) *(moved up: Next #7)*
 
 #### Quality of Life
-- [ ] `world.clear()` - remove all bodies
-- [ ] Body `userData` field for game data
+- [x] `world.clear()` - remove all bodies (`clear(world)`)
+- [x] Body `userData` field for game data (typed version: Next #12)
 - [ ] Constraint `userData` field
 - [ ] Body enable/disable without removing
 
@@ -275,9 +320,9 @@ Optimizations and quality-of-life improvements.
 
 Better collision handling for edge cases.
 
-#### Continuous Collision Detection
+#### Continuous Collision Detection *(moved up: Next #5)*
 - [ ] Time of impact (TOI) calculation
-- [ ] CCD opt-in per body (`body.ccd = true`)
+- [ ] CCD opt-in per body (the existing `body.isBullet` flag)
 - [ ] Tunneling prevention for fast/small objects
 
 #### Narrow Phase
@@ -321,7 +366,7 @@ Support for more shape types.
 
 #### Shapes
 - [ ] Concave polygon decomposition (auto-split into convex)
-- [ ] Edge/chain shapes (static terrain)
+- [ ] Edge/chain shapes (static terrain) *(moved up: Next #6)*
 - [ ] Capsule shape
 
 ---
