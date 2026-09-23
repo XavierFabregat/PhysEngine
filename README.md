@@ -11,7 +11,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 **Current Version:** 0.2.0  
 **Core Math Layer:** ✅ Complete  
 **Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
-**Collision Detection & Response:** ✅ All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase; impulses with rotation and Coulomb friction (balls roll, boxes tip and slide). 🚧 Solver stability: resting bodies creep slightly and tall stacks compress
+**Collision Detection & Response:** ✅ All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase; impulses with rotation and Coulomb friction (balls roll, boxes tip and slide). Stable stacking: contacts are solved between the velocity and position halves of each step, iteratively and warm-started (a 10-box tower holds to 0.1 px)
 
 ## Conventions
 
@@ -53,7 +53,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 - **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
-- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules and iterations, positional correction; sensors detect without responding)
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules, iterations, restitution threshold and warm starting, positional correction; sensors detect without responding)
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -162,6 +162,22 @@ Friction follows Coulomb's law: surfaces grip until the sideways force exceeds �
 ```typescript
 createWorld({ resolver: new ImpulseResolver({ frictionCombine: 'min' }) }); // ice beats rubber
 ```
+
+### Solver settings
+
+Each step integrates velocities, solves every contact together, then moves bodies (Box2D's order), so resting bodies don't creep and stacks don't sink. The defaults suit pixel-scale worlds; tune them on the resolver:
+
+```typescript
+createWorld({
+  resolver: new ImpulseResolver({
+    iterations: 10,            // solver passes per step (more = stiffer piles)
+    warmStarting: true,        // reuse last step's impulses (tall stacks need it)
+    restitutionThreshold: 10,  // approaches slower than this (units/s) don't bounce
+  }),
+});
+```
+
+With warm starting the resolver remembers contacts between steps, so give each world its own resolver (`createWorld` does by default).
 
 ### Choosing how bounciness combines
 
@@ -293,7 +309,8 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Solver stability** - Split `step()` into integrate velocities → solve all contacts iteratively → integrate positions. Today positions move before contacts fix velocities, so resting bodies creep g·sinθ·dt² per frame on slopes, stacks compress a few px per level, a 3-2-1 box pyramid topples, and very large mass ratios (≈1000:1) let a heavy body crush a light one
+- **Continuous collision** - Fast, small bodies can still tunnel through thin ones (a body moving farther than the pair's combined size in one step)
+- **Extreme mass ratios** - Keep ratios under ~100:1 (Box2D recommends 10:1); at 1000:1 a heavy body still presses a light one ~9 px into the floor
 - **Broad phase** - Spatial hash once body counts demand it
 - **Constraints** - Springs, rods, pins
 - **Events** - Collision callbacks

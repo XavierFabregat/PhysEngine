@@ -61,7 +61,6 @@ export interface WorldConfig {
    *   Pass `new ImpulseResolver({ restitutionCombine: 'max' })` to change how
    *   two bodies' restitution combine ('min' default, 'max', 'average', 'multiply', or a function)
    * - PositionResolver: Simple, good for simple games (future)
-   * - IterativeResolver: More accurate, slower (future)
    */
   resolver?: CollisionResolver;
 }

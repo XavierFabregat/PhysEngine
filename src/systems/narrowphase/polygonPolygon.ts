@@ -88,7 +88,8 @@ const clipSegment = (points: Vector2[], normal: Vector2, offset: number): Vector
  * @param bodyA - Rectangle or polygon body
  * @param bodyB - Rectangle or polygon body
  * @returns Contact (normal from A to B, depth = deepest penetration,
- *   `points` = contact points on the incident polygon, `point` = their
+ *   `points` = contact points on the incident polygon, `pointDepths` = their
+ *   depths (negative within the speculative margin), `point` = their
  *   midpoint), or null if not colliding
  *
  * @example
@@ -148,12 +149,14 @@ export function detectPolygonPolygon(bodyA: Body, bodyB: Body): Contact | null {
 
   // Keep the clipped points below (or within CONTACT_MARGIN of) the reference face
   const points: Vector2[] = [];
+  const pointDepths: number[] = [];
   let depth = 0;
   let touching = false;
   for (const p of clipped) {
     const separation = refNormal.x * (p.x - r1.x) + refNormal.y * (p.y - r1.y);
     if (separation <= CONTACT_MARGIN) {
       points.push(p);
+      pointDepths.push(-separation);
       depth = Math.max(depth, -separation);
       if (separation <= 0) touching = true;
     }
@@ -169,5 +172,5 @@ export function detectPolygonPolygon(bodyA: Body, bodyB: Body): Contact | null {
       ? points[0]!
       : { x: (points[0]!.x + points[1]!.x) * 0.5, y: (points[0]!.y + points[1]!.y) * 0.5 };
 
-  return { point, points, normal, depth };
+  return { point, points, pointDepths, normal, depth };
 }

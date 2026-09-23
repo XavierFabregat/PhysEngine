@@ -7,6 +7,7 @@ import { createRectangle } from '../bodies/createRectangle';
 import { createPolygon } from '../bodies/createPolygon';
 import { BodyType } from '../types/BodyType';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
+import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicitEuler';
 
 describe('step', () => {
   beforeEach(() => {
@@ -348,6 +349,46 @@ describe('step', () => {
   });
 
   describe('collision detection and response', () => {
+    describe('pipeline', () => {
+      it('should leave every AABB matching the final positions', () => {
+        const world = createWorld();
+        addBody(world, createRectangle({ position: { x: 0, y: 30 }, width: 400, height: 20, type: BodyType.STATIC }));
+        const ball = createCircle({ position: { x: 0, y: 12 }, radius: 10 }); // overlapping: corrected this step
+        addBody(world, ball);
+
+        step(world, 1 / 60);
+
+        expect(ball.aabb.min.y).toBeCloseTo(ball.position.y - 10, 10);
+        expect(ball.aabb.max.y).toBeCloseTo(ball.position.y + 10, 10);
+      });
+
+      it('should still work with a legacy integrator that only has integrate()', () => {
+        const legacy = { integrate: new SemiImplicitEulerIntegrator().integrate.bind(new SemiImplicitEulerIntegrator()) };
+        const world = createWorld({ integrator: legacy });
+        addBody(world, createRectangle({ position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC }));
+        const ball = createCircle({ position: { x: 400, y: 100 }, radius: 20, material: { restitution: 0 } });
+        addBody(world, ball);
+
+        for (let i = 0; i < 240; i++) step(world, 1 / 60);
+
+        expect(ball.position.y).toBeGreaterThan(539);
+        expect(ball.position.y).toBeLessThan(542);
+      });
+
+      it('should still work with a resolver that only has resolve()', () => {
+        const inner = new ImpulseResolver();
+        const world = createWorld({ resolver: { resolve: (a, b, c) => inner.resolve(a, b, c) } });
+        addBody(world, createRectangle({ position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC }));
+        const ball = createCircle({ position: { x: 400, y: 100 }, radius: 20, material: { restitution: 0 } });
+        addBody(world, ball);
+
+        for (let i = 0; i < 240; i++) step(world, 1 / 60);
+
+        expect(ball.position.y).toBeGreaterThan(539);
+        expect(ball.position.y).toBeLessThan(542);
+      });
+    });
+
     describe('rotation and friction', () => {
       const g = 400;
       const theta = Math.PI / 6; // 30°
@@ -399,7 +440,7 @@ describe('step', () => {
         expect(crate.rotation).toBeCloseTo(theta, 3); // slides, doesn't tumble
       });
 
-      it('should mostly hold a box on an incline when μ > tanθ (bounded creep)', () => {
+      it('should hold a box still on an incline when μ > tanθ', () => {
         const world = createWorld({ gravity: { x: 0, y: g } });
         addBody(world, incline(0.8));
         const start = onIncline(400, 10);
@@ -408,10 +449,10 @@ describe('step', () => {
 
         run(world, 1);
 
-        // Ideal: 0. step() integrates positions before contacts fix velocities,
-        // so a resting body creeps g·sinθ·dt² per frame (≈3.3 px/s here) until
-        // the velocity/position split lands; this bound guards it from growing
-        expect(travelled(crate, start)).toBeLessThan(4);
+        // Contacts are solved between the velocity and position halves of the
+        // step, so static friction cancels gravity before the box moves
+        // (the old order crept g·sinθ·dt² per frame, ≈3.3 px/s here)
+        expect(Math.abs(travelled(crate, start))).toBeLessThan(0.05);
       });
 
       it('should stop a sliding box after v²/(2 μ g)', () => {
@@ -484,7 +525,7 @@ describe('step', () => {
         expect(base).toBeLessThan(560 + 1);
       });
 
-      it('should keep a stack of boxes ordered and upright (bounded sinking)', () => {
+      it('should keep a stack of 5 boxes at their resting heights', () => {
         const world = createWorld();
         addBody(world, floor());
         const boxes = [0, 1, 2, 3, 4].map((i) =>
@@ -496,12 +537,74 @@ describe('step', () => {
 
         boxes.forEach((b, i) => {
           expect(b.position.x).toBeCloseTo(400, 6);
-          // The single-pass linear resolver lets stacks compress a few px per
-          // level; this bound guards against it getting worse
-          // (measured: 5.7, 11.5, 15.7, 18.2, 18.8 px)
-          expect(Math.abs(b.position.y - (540 - i * 40))).toBeLessThan(7 + i * 5);
+          // (the single-pass resolver compressed this stack 5.7-18.8 px)
+          expect(Math.abs(b.position.y - (540 - i * 40))).toBeLessThan(0.5);
           if (i > 0) expect(b.position.y).toBeLessThan(boxes[i - 1]!.position.y - 30);
         });
+      });
+
+      const stack = (levels: number, resolver?: ImpulseResolver) => {
+        const world = createWorld(resolver ? { resolver } : {});
+        addBody(world, floor());
+        const boxes = Array.from({ length: levels }, (_, i) =>
+          createRectangle({ position: { x: 400, y: 540 - i * 40 }, width: 40, height: 40, material: { restitution: 0 } })
+        );
+        boxes.forEach((b) => addBody(world, b));
+        run(world, 10);
+        return Math.max(...boxes.map((b, i) => Math.abs(b.position.y - (540 - i * 40))));
+      };
+
+      it('should keep a stack of 10 boxes within 0.5 px of their heights (warm starting)', () => {
+        expect(stack(10)).toBeLessThan(0.5);
+      });
+
+      it('should need warm starting for tall stacks at the default iterations', () => {
+        // Without reusing last step's impulses, 10 iterations cannot carry the
+        // load up 10 levels: the stack compresses by tens of px
+        expect(stack(10, new ImpulseResolver({ warmStarting: false }))).toBeGreaterThan(10);
+      });
+
+      it('should keep a 3-2-1 box pyramid standing', () => {
+        const world = createWorld();
+        addBody(world, floor());
+        const layout: [number, number][] = [
+          [400 - 42, 540], [400, 540], [400 + 42, 540],
+          [400 - 21, 500], [400 + 21, 500],
+          [400, 460],
+        ];
+        const boxes = layout.map(([x, y]) =>
+          createRectangle({ position: { x, y }, width: 40, height: 40, material: { restitution: 0 } })
+        );
+        boxes.forEach((b) => addBody(world, b));
+
+        run(world, 6);
+
+        boxes.forEach((b, i) => {
+          expect(Math.abs(b.position.x - layout[i]![0])).toBeLessThan(3);
+          expect(Math.abs(b.position.y - layout[i]![1])).toBeLessThan(2);
+          expect(Math.abs(b.rotation)).toBeLessThan(0.05);
+        });
+      });
+
+      it.each([
+        [10, 0.1],
+        [100, 0.5],
+      ])('should hold a body %s× heavier on a light box (sinks < %s px)', (ratio, tolerance) => {
+        const world = createWorld();
+        addBody(world, floor());
+        const crate = createRectangle({ position: { x: 400, y: 540 }, width: 60, height: 40, material: { restitution: 0 } });
+        const heavy = createCircle({
+          position: { x: 400, y: 490 },
+          radius: 30,
+          material: { restitution: 0, density: (ratio * crate.mass) / (Math.PI * 900) },
+        });
+        addBody(world, crate);
+        addBody(world, heavy);
+
+        run(world, 4);
+
+        expect(crate.position.y - 540).toBeLessThan(tolerance);
+        expect(heavy.position.y + 30 - (crate.position.y - 20)).toBeLessThan(tolerance);
       });
 
       it('should slide a ball down a static triangular ramp onto the floor', () => {
@@ -570,13 +673,37 @@ describe('step', () => {
         return heights.slice(1).map((h, i) => h / heights[i]!);
       };
 
+      // e = 1 keeps its height (within 0.2% per bounce: the ball is reflected
+      // while a few px embedded, since contacts are found once overlapping)
       for (const ratio of apexRatios(1)) {
-        expect(ratio).toBeLessThanOrEqual(1);
-        expect(ratio).toBeGreaterThan(0.95);
+        expect(ratio).toBeLessThan(1.002);
+        expect(ratio).toBeGreaterThan(0.995);
       }
       for (const ratio of apexRatios(0.8)) {
         expect(ratio).toBeGreaterThan(0.58);
         expect(ratio).toBeLessThan(0.66); // e² = 0.64
+      }
+    });
+
+    it('should not drift a perfectly elastic ball over many bounces', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      addBody(world, createRectangle({ position: { x: 0, y: 580 }, width: 800, height: 40, type: BodyType.STATIC, material: { restitution: 1 } }));
+      const ball = createCircle({ position: { x: 0, y: 300 }, radius: 20, material: { restitution: 1 } });
+      addBody(world, ball);
+
+      const apexes: number[] = [];
+      let previousVy = 0;
+      for (let i = 0; i < 60 * 90 && apexes.length < 30; i++) {
+        step(world, 1 / 60);
+        if (previousVy < 0 && ball.velocity.y >= 0) apexes.push(540 - ball.position.y);
+        previousVy = ball.velocity.y;
+      }
+
+      expect(apexes).toHaveLength(30);
+      // Dropped from 240 px: every apex stays within 1% of it
+      for (const apex of apexes) {
+        expect(apex).toBeGreaterThan(240 * 0.99);
+        expect(apex).toBeLessThan(240 * 1.01);
       }
     });
 
