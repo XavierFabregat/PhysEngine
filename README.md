@@ -54,6 +54,8 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
 - **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules, iterations, restitution threshold and warm starting, positional correction; sensors detect without responding)
+- **Events** - `onCollisionStart` / `onCollisionActive` / `onCollisionEnd` (sensors included); `world.contacts` holds the last step's contacts
+- **Queries** - `raycast` (closest hit with point, normal, distance), `queryPoint`, `queryAABB` (exact shapes), with layer/sensor/predicate filters
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -162,6 +164,39 @@ Friction follows Coulomb's law: surfaces grip until the sideways force exceeds �
 ```typescript
 createWorld({ resolver: new ImpulseResolver({ frictionCombine: 'min' }) }); // ice beats rubber
 ```
+
+### Collision events
+
+```typescript
+import { onCollisionStart, onCollisionActive, onCollisionEnd } from '@xavifabregat/physengine';
+
+const off = onCollisionStart(world, (bodyA, bodyB, contact) => {
+  console.log('hit', bodyA.id, bodyB.id, contact.point, contact.normal);
+});
+onCollisionActive(world, (bodyA, bodyB) => { /* every step they keep touching */ });
+onCollisionEnd(world, (bodyA, bodyB) => { /* separated (or one was removed) */ });
+off(); // unsubscribe
+```
+
+Handlers run at the end of `step()`, so they can add or remove bodies. Sensors fire events without responding physically, which makes them trigger zones. The last step's contacts are also available as `world.contacts`, and `debugDraw(world, renderer, { showContacts: true })` draws them.
+
+### World queries
+
+```typescript
+import { raycast, queryPoint, queryAABB } from '@xavifabregat/physengine';
+
+// Line of sight: closest hit (sensors skipped; shapes containing the origin ignored)
+const hit = raycast(world, { origin: gun, direction: aim, maxDistance: 500, filter: { collidesWith: Layers.WORLD } });
+if (hit) console.log(hit.body.id, hit.point, hit.normal, hit.distance);
+
+// Picking: bodies whose shape contains the point
+const [picked] = queryPoint(world, mousePosition);
+
+// Selection box: bodies whose shape (not just AABB) overlaps the region
+const selected = queryAABB(world, { min: { x: 0, y: 0 }, max: { x: 200, y: 100 } });
+```
+
+Filters: `collidesWith` (layer mask), `includeSensors`, `predicate`.
 
 ### Solver settings
 
@@ -313,7 +348,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 - **Extreme mass ratios** - Keep ratios under ~100:1 (Box2D recommends 10:1); at 1000:1 a heavy body still presses a light one ~9 px into the floor
 - **Broad phase** - Spatial hash once body counts demand it
 - **Constraints** - Springs, rods, pins
-- **Events** - Collision callbacks
 
 ## Design Goals
 

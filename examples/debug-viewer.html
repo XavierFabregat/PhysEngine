@@ -219,6 +219,8 @@
       <label><input type="checkbox" id="showVelocities"> Velocities</label>
       <label><input type="checkbox" id="showCenterOfMass"> Center of Mass</label>
       <label><input type="checkbox" id="showIds"> Body IDs</label>
+      <label><input type="checkbox" id="showContacts"> Contacts</label>
+      <label><input type="checkbox" id="showRay"> Ray to mouse</label>
     </div>
 
     <div class="panel" id="rotation-panel" style="display: none;">
@@ -240,6 +242,8 @@
       <p><strong>Bodies:</strong> <span class="value" id="bodyCount">0</span></p>
       <p><strong>Dynamic:</strong> <span class="value" id="dynamicCount">0</span></p>
       <p><strong>Static:</strong> <span class="value" id="staticCount">0</span></p>
+      <p><strong>Collisions started:</strong> <span class="value" id="collisionCount">0</span></p>
+      <p><strong>Touching now:</strong> <span class="value" id="touchingCount">0</span></p>
       <p><strong>Time:</strong> <span class="value" id="time">0.00</span>s</p>
     </div>
   </div>
@@ -285,6 +289,9 @@
       getBodyCount,
       getBodies,
       step,
+      onCollisionStart,
+      raycast,
+      bodyContainsPoint,
       updateBodyAABB,
       debugDraw,
       BodyType,
@@ -299,6 +306,7 @@
 
     // Create physics world
     let world = createWorld({ gravity: { x: 0, y: 400 } });
+    let collisionCount = 0;
     let selectedBody = null;
     let isPlaying = false;
     let animationId = null;
@@ -328,6 +336,9 @@
     // Initialize scene
     function initializeScene() {
       world = createWorld({ gravity: { x: 0, y: 400 } });
+      collisionCount = 0;
+      // Collision events: count every new contact
+      onCollisionStart(world, () => { collisionCount++; });
       isPlaying = false;
       document.getElementById('play-pause').textContent = '▶️ Play Physics';
       document.getElementById('play-pause').classList.add('primary');
@@ -627,9 +638,8 @@
       for (let i = world.bodies.length - 1; i >= 0; i--) {
         const body = world.bodies[i];
         
-        // Simple point-in-AABB test
-        if (mouseX >= body.aabb.min.x && mouseX <= body.aabb.max.x &&
-            mouseY >= body.aabb.min.y && mouseY <= body.aabb.max.y) {
+        // Exact point-in-shape test (a rotated box's AABB corners don't count)
+        if (bodyContainsPoint(body, { x: mouseX, y: mouseY })) {
           
           if (e.shiftKey) {
             // Shift+click to remove
@@ -659,12 +669,15 @@
       render();
     });
 
+    // Last mouse position over the canvas (for the ray demo)
+    let mousePosition = null;
+
     canvas.addEventListener('mousemove', (e) => {
-      if (!draggingBody) return;
-      
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
+      mousePosition = { x: mouseX, y: mouseY };
+      if (!draggingBody) return;
       
       // Update body position
       draggingBody.position.x = mouseX - dragOffset.x;
@@ -685,6 +698,8 @@
     function updateInfo() {
       const bodies = getBodies(world);
       document.getElementById('bodyCount').textContent = getBodyCount(world);
+      document.getElementById('collisionCount').textContent = collisionCount;
+      document.getElementById('touchingCount').textContent = world.contacts.length;
       document.getElementById('dynamicCount').textContent = 
         bodies.filter(b => b.type === BodyType.DYNAMIC).length;
       document.getElementById('staticCount').textContent = 
@@ -733,10 +748,32 @@
         showAABBs: document.getElementById('showAABBs').checked,
         showVelocities: document.getElementById('showVelocities').checked,
         showCenterOfMass: document.getElementById('showCenterOfMass').checked,
-        showIds: document.getElementById('showIds').checked
+        showIds: document.getElementById('showIds').checked,
+        showContacts: document.getElementById('showContacts').checked
       };
 
       debugDraw(world, renderer, options);
+
+      // Ray from the top-left corner toward the mouse: first hit + surface normal
+      if (document.getElementById('showRay').checked && mousePosition) {
+        const origin = { x: 60, y: 20 };
+        const direction = { x: mousePosition.x - origin.x, y: mousePosition.y - origin.y };
+        if (direction.x !== 0 || direction.y !== 0) {
+          const hit = raycast(world, { origin, direction, maxDistance: 2000 });
+          const end = hit ? hit.point : {
+            x: origin.x + direction.x * 10,
+            y: origin.y + direction.y * 10
+          };
+          renderer.drawLine(origin, end, hit ? '#ff4488' : '#553344');
+          if (hit) {
+            renderer.drawPoint(hit.point, '#ff4488');
+            renderer.drawLine(hit.point, {
+              x: hit.point.x + hit.normal.x * 20,
+              y: hit.point.y + hit.normal.y * 20
+            }, '#ffff00');
+          }
+        }
+      }
       
       // Highlight selected body
       if (selectedBody) {

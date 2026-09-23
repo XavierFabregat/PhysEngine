@@ -188,7 +188,7 @@ Core physics engine with all essential features for 2D game development.
 
 #### Collision Filtering
 - [ ] Layer/mask system for selective collision (`shouldCollide` helper done; applies to sensors too)
-- [ ] Sensor bodies (detect but don't respond)
+- [x] Sensor bodies (detect but don't respond)
 
 #### Constraints
 - [ ] Spring (soft distance constraint)
@@ -203,14 +203,14 @@ Core physics engine with all essential features for 2D game development.
 - [ ] `applyTorque(amount)` - rotational force
 
 #### Events
-- [ ] `collisionStart` - bodies begin touching
-- [ ] `collisionEnd` - bodies stop touching
-- [ ] `collisionActive` - bodies still touching (each step)
+- [x] `collisionStart` - bodies begin touching
+- [x] `collisionEnd` - bodies stop touching
+- [x] `collisionActive` - bodies still touching (each step)
 
 #### World Queries
-- [ ] `raycast(origin, direction, maxDistance, filter?)` - ray intersection
-- [ ] `queryPoint(point, filter?)` - bodies containing point
-- [ ] `queryAABB(bounds, filter?)` - bodies in bounding box
+- [x] `raycast(origin, direction, maxDistance, filter?)` - ray intersection
+- [x] `queryPoint(point, filter?)` - bodies containing point
+- [x] `queryAABB(bounds, filter?)` - bodies in bounding box
 
 #### World Management
 - [x] `createWorld(config)` - functional factory
@@ -230,7 +230,7 @@ Core physics engine with all essential features for 2D game development.
 - [ ] `debugDraw(world, renderer, options?)` - visualize physics simulation
   - [x] Bodies (shapes, outlines)
   - [x] AABBs (bounding boxes)
-  - [ ] Contacts (collision points, normals)
+  - [x] Contacts (collision points, normals)
   - [ ] Constraints (springs, rods, pins)
   - [x] Velocities (direction vectors)
   - [x] Center of mass markers
