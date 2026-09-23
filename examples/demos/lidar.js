@@ -40,7 +40,6 @@ export default {
   mount(stage) {
     const world = createWorld({ gravity: { x: 0, y: 0 } });
     const random = seeded(21);
-    const before = new Map();
     const keys = new Set();
     let target = null;
     let showWorld = true;
@@ -150,7 +149,7 @@ export default {
       update() {
         const dir = driveDirection();
         rover.force = { x: dir.x * THRUST * rover.mass, y: dir.y * THRUST * rover.mass };
-        stepWorld(world, before);
+        stepWorld(world);
 
         scan = doScan();
         for (const { hit } of scan) {

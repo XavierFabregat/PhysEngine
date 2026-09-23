@@ -1,6 +1,6 @@
 // Knockdown: a slingshot against box towers.
-// Uses: SAT stacking, rotation + friction, collision events (scoring by impact
-// speed), raycast (trajectory preview), createPolygon.
+// Uses: SAT stacking, rotation + friction, collision events (scoring by the
+// contact's impactSpeed), raycast (trajectory preview), createPolygon.
 import {
   createWorld,
   createCircle,
@@ -12,7 +12,7 @@ import {
   raycast,
   BodyType,
 } from 'physengine';
-import { HEIGHT, drawPaper, drawBody, defaultStyle, createBursts, stepWorld, impactSpeed } from './kit.js';
+import { HEIGHT, drawPaper, drawBody, defaultStyle, createBursts, stepWorld } from './kit.js';
 
 const ANCHOR = { x: 170, y: 430 };
 const MAX_PULL = 120;
@@ -79,7 +79,7 @@ export default {
     'The dotted arc is the exact path; the ✕ is where a raycast says it will first hit.',
     'Heavier hits and chain reactions score more.',
   ],
-  features: ['SAT stacking', 'Rotation + friction', 'onCollisionStart', 'raycast', 'createPolygon'],
+  features: ['SAT stacking', 'Rotation + friction', 'onCollisionStart', 'contact.impactSpeed', 'raycast', 'createPolygon'],
   controls: [
     { id: 'reset', label: 'Rebuild towers', kind: 'button' },
     { id: 'slowmo', label: 'Slow motion', kind: 'toggle', checked: false },
@@ -95,7 +95,6 @@ export default {
     let aim = null;
     let slowmo = false;
     let tick = 0;
-    const before = new Map();
     const bursts = createBursts();
 
     const reset = () => {
@@ -108,7 +107,8 @@ export default {
       onCollisionStart(world, (a, b, contact) => {
         const kinds = [a.userData?.kind, b.userData?.kind];
         if (!kinds.includes('ball') && !(kinds[0] === 'block' && kinds[1] === 'block')) return;
-        const speed = impactSpeed(a, b, contact, before);
+        // How hard they hit, measured by the engine before it resolved the contact
+        const speed = contact.impactSpeed;
         if (speed < 60) return;
         strongest = Math.max(strongest, speed);
         score += Math.round(speed / 10);
@@ -171,7 +171,7 @@ export default {
       update() {
         tick++;
         if (slowmo && tick % 3 !== 0) return;
-        stepWorld(world, before);
+        stepWorld(world);
         // Balls that leave the screen are gone
         for (const ball of [...balls]) {
           if (ball.position.x > 1100 || ball.position.x < -140) {

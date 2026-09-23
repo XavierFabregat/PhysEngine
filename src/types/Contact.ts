@@ -40,6 +40,25 @@ export interface Contact {
   pointDepths?: readonly number[];
 
   /**
+   * How fast the bodies were approaching along the normal when this step
+   * began (world units/s, ≥ 0; the largest over the contact points, with
+   * this step's gravity removed). Set by `step()` for every contact,
+   * sensors included. Use it for damage, sound volume, or scoring hits.
+   */
+  impactSpeed?: number;
+
+  /**
+   * Total normal impulse the resolver applied this step (mass × units/s,
+   * ≥ 0): the momentum it transferred along the normal. Divide by dt for the
+   * contact force (a resting body's is its weight). Set by `step()`; 0 for
+   * sensors and pairs that can't respond.
+   */
+  normalImpulse?: number;
+
+  /** Total friction impulse applied this step, along the contact tangent (signed). */
+  tangentImpulse?: number;
+
+  /**
    * Contact normal vector (unit length).
    * 
    * Points FROM bodyA TO bodyB.

@@ -180,6 +180,17 @@ onCollisionEnd(world, (bodyA, bodyB) => { /* separated (or one was removed) */ }
 off(); // unsubscribe
 ```
 
+Every contact also says how hard the bodies hit and how hard the solver pushed:
+
+```typescript
+onCollisionStart(world, (a, b, contact) => {
+  if (contact.impactSpeed > 300) breakCrate(b);      // approach speed before the hit (units/s)
+  playThud(contact.normalImpulse / a.mass);          // momentum transferred this step
+});
+```
+
+`normalImpulse / dt` is the contact force (a resting body's is its weight); `tangentImpulse` is the friction part.
+
 Handlers run at the end of `step()`, so they can add or remove bodies. Sensors fire events without responding physically, which makes them trigger zones. The last step's contacts are also available as `world.contacts`, and `debugDraw(world, renderer, { showContacts: true })` draws them.
 
 ### World queries
@@ -357,7 +368,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
 Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
-- **Collision strength** - Contact impulses and impact speed in events (Knockdown computes them itself)
 - **Distribution builds** - Single-file ESM and a `<script>`-tag build
 - **Forces API** - `applyForce` / `applyImpulse` / `applyTorque`, including at a point
 - **Continuous collision** - Fast, small bodies can still tunnel through thin ones

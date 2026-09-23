@@ -2,6 +2,7 @@ import type { World } from '../types/World.js';
 import type { ContactPair } from '../types/Contact.js';
 import { updateBodyAABB } from '../bodies/aabb.js';
 import { dispatchCollisionEvents } from './events.js';
+import { measureImpact } from './impact.js';
 
 /**
  * Advances the physics simulation by one time step.
@@ -12,7 +13,8 @@ import { dispatchCollisionEvents } from './events.js';
  * Physics pipeline (Box2D's order):
  * 1. Integrate velocities - gravity and forces change velocities only
  * 2. AABB update + broad phase - potentially colliding pairs
- * 3. Narrow phase - contacts at the current positions
+ * 3. Narrow phase - contacts at the current positions, with each pair's
+ *    impact speed measured before the resolver changes velocities
  * 4. Solve velocities - impulses for all contacts together, so bodies stop
  *    *before* they move into each other (no creep on slopes, no sinking stacks)
  * 5. Integrate positions - move bodies with the corrected velocities
@@ -70,7 +72,11 @@ export const step = (world: World, dt: number): void => {
     if (!bodyA || !bodyB) continue;
 
     const contact = world.narrowPhase.detect(bodyA, bodyB);
-    if (contact) contacts.push({ bodyA, bodyB, contact });
+    if (!contact) continue;
+    const pair = { bodyA, bodyB, contact };
+    // How hard they hit, before the resolver stops them (for events)
+    measureImpact(pair, world.gravity, dt);
+    contacts.push(pair);
   }
 
   // 4. Collision response, velocity phase

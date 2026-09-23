@@ -165,7 +165,7 @@ Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whi
 1. ✅ **Damping** — `linearDamping` and `angularDamping` per body (done; exact exponential decay). Rolling resistance still open.
    - *Why:* nothing ever slows down on its own. `lidar.js` multiplies the rover's and crates' velocities by 0.9/0.95 every frame by hand; rolling balls in Ramp Sketch roll forever on flat ground. Blocks top-down games (pool, racing, space).
    - *Done when:* a body with damping d loses speed as `v·e^(−d·t)` (tested against the analytic curve); the Lidar demo drops its manual drag.
-2. **Collision strength in contacts and events** — `normalImpulse`, `tangentImpulse` per contact point and the pair's `impactSpeed`, passed to `onCollisionStart`/`onCollisionActive`.
+2. ✅ **Collision strength in contacts and events** — `contact.impactSpeed`, `contact.normalImpulse`, `contact.tangentImpulse` (done; totals per contact rather than per point).
    - *Why:* Knockdown scores hits with `impactSpeed()` in `kit.js`, which snapshots every body's velocity before each step because after the step the solver has already stopped them. The resolver already accumulates these impulses.
    - *Done when:* Knockdown scores from the event data alone; impulses sum to the momentum change in a unit test.
 3. **Forces API** *(moved up from v1.0 Forces below)* — `applyForce(body, force, point?)`, `applyImpulse(body, impulse, point?)`, `applyTorque(body, torque)`.

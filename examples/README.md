@@ -21,7 +21,7 @@ pnpm build
 npx serve .        # then open http://localhost:3000/examples/demos/
 ```
 
-- **Knockdown**: slingshot against box towers. The aim preview uses `raycast` along the trajectory; scoring uses `onCollisionStart` impact speeds.
+- **Knockdown**: slingshot against box towers. The aim preview uses `raycast` along the trajectory; scoring uses `onCollisionStart` with the engine's `contact.impactSpeed`.
 - **Galton Board**: balls rain through a peg lattice into sensor bins; the histogram is compared with the binomial curve.
 - **Ramp Sketch**: draw ramps with the pointer (strokes become static boxes) to roll a ball into a sensor cup; level 3 has a kinematic paddle.
 - **Lidar Rover**: a top-down rover casts 180 rays a frame and builds a point-cloud map; the rover and crates use `linearDamping`/`angularDamping` so they coast to a stop.
