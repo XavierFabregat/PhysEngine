@@ -573,4 +573,16 @@ describe('createRectangle', () => {
       expect(calculatePolygonArea(rect.shape.vertices)).toBeGreaterThan(0);
     });
   });
+
+  describe('damping', () => {
+    it('should default to no damping and pass values through', () => {
+      expect(createRectangle({ width: 5, height: 5 })).toMatchObject({ linearDamping: 0, angularDamping: 0 });
+      expect(createRectangle({ width: 5, height: 5, linearDamping: 1.5, angularDamping: 0.3 })).toMatchObject({ linearDamping: 1.5, angularDamping: 0.3 });
+    });
+
+    it.each([-1, NaN, Infinity])('should reject damping %s', (value) => {
+      expect(() => createRectangle({ width: 5, height: 5, linearDamping: value })).toThrow(/linearDamping/);
+      expect(() => createRectangle({ width: 5, height: 5, angularDamping: value })).toThrow(/angularDamping/);
+    });
+  });
 });

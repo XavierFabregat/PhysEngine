@@ -105,4 +105,16 @@ describe('createPolygon', () => {
       expect(() => createPolygon({ vertices: square, type: BodyType.STATIC, material: { density: 0 } })).not.toThrow();
     });
   });
+
+  describe('damping', () => {
+    it('should default to no damping and pass values through', () => {
+      expect(createPolygon({ vertices: square })).toMatchObject({ linearDamping: 0, angularDamping: 0 });
+      expect(createPolygon({ vertices: square, linearDamping: 1.5, angularDamping: 0.3 })).toMatchObject({ linearDamping: 1.5, angularDamping: 0.3 });
+    });
+
+    it.each([-1, NaN, Infinity])('should reject damping %s', (value) => {
+      expect(() => createPolygon({ vertices: square, linearDamping: value })).toThrow(/linearDamping/);
+      expect(() => createPolygon({ vertices: square, angularDamping: value })).toThrow(/angularDamping/);
+    });
+  });
 });

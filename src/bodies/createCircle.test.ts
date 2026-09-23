@@ -534,4 +534,16 @@ describe('createCircle', () => {
       ).not.toThrow();
     });
   });
+
+  describe('damping', () => {
+    it('should default to no damping and pass values through', () => {
+      expect(createCircle({ radius: 5 })).toMatchObject({ linearDamping: 0, angularDamping: 0 });
+      expect(createCircle({ radius: 5, linearDamping: 1.5, angularDamping: 0.3 })).toMatchObject({ linearDamping: 1.5, angularDamping: 0.3 });
+    });
+
+    it.each([-1, NaN, Infinity])('should reject damping %s', (value) => {
+      expect(() => createCircle({ radius: 5, linearDamping: value })).toThrow(/linearDamping/);
+      expect(() => createCircle({ radius: 5, angularDamping: value })).toThrow(/angularDamping/);
+    });
+  });
 });

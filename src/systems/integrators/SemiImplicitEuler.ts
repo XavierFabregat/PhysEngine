@@ -40,7 +40,8 @@ export class SemiImplicitEulerIntegrator implements Integrator {
   }
 
   /**
-   * Velocity half: v += (F/m + g) dt, ω += (τ/I) dt, then clears forces.
+   * Velocity half: v += (F/m + g) dt, ω += (τ/I) dt, then damping
+   * (v *= e^(−linearDamping·dt), ω *= e^(−angularDamping·dt)), then clears forces.
    * Static bodies are skipped; kinematic bodies ignore forces (which are
    * still cleared so they don't accumulate).
    *
@@ -56,6 +57,13 @@ export class SemiImplicitEulerIntegrator implements Integrator {
       const acceleration = Vec2.add(Vec2.scale(body.force, body.invMass), gravity);
       body.velocity = Vec2.add(body.velocity, Vec2.scale(acceleration, dt));
       body.angularVelocity += body.torque * body.invInertia * dt;
+
+      // Damping: exact exponential decay over the step, so the result matches
+      // v₀·e^(−d·t) at any time step (1/(1 + d·dt) is only first-order)
+      const linearDamping = body.linearDamping ?? 0;
+      if (linearDamping > 0) body.velocity = Vec2.scale(body.velocity, Math.exp(-linearDamping * dt));
+      const angularDamping = body.angularDamping ?? 0;
+      if (angularDamping > 0) body.angularVelocity *= Math.exp(-angularDamping * dt);
     }
 
     // Forces are per-frame accumulators

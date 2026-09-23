@@ -50,7 +50,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ### ✅ Bodies & World
 
-- **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
+- **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density and optional linear/angular damping. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
 - **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules, iterations, restitution threshold and warm starting, positional correction; sensors detect without responding)
@@ -200,6 +200,16 @@ const selected = queryAABB(world, { min: { x: 0, y: 0 }, max: { x: 200, y: 100 }
 
 Filters: `collidesWith` (layer mask), `includeSensors`, `predicate`.
 
+### Damping
+
+Bodies don't slow down on their own unless you give them damping (rates in 1/s; speed decays as `v₀·e^(−d·t)`):
+
+```typescript
+const puck = createCircle({ radius: 12, linearDamping: 0.8, angularDamping: 0.5 });
+```
+
+Use it for air/ground drag in top-down games, and angular damping to stop balls rolling forever on flat ground (there is no rolling resistance otherwise).
+
 ### Solver settings
 
 Each step integrates velocities, solves every contact together, then moves bodies (Box2D's order), so resting bodies don't creep and stacks don't sink. The defaults suit pixel-scale worlds; tune them on the resolver:
@@ -347,7 +357,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
 Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
-- **Damping** - Linear/angular damping so bodies slow down on their own (the Lidar demo applies drag by hand)
 - **Collision strength** - Contact impulses and impact speed in events (Knockdown computes them itself)
 - **Distribution builds** - Single-file ESM and a `<script>`-tag build
 - **Forces API** - `applyForce` / `applyImpulse` / `applyTorque`, including at a point
