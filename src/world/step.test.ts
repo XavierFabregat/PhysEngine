@@ -348,6 +348,104 @@ describe('step', () => {
   });
 
   describe('collision detection and response', () => {
+    describe('rotation and friction', () => {
+      const g = 400;
+      const theta = Math.PI / 6; // 30°
+      const along = { x: Math.cos(theta), y: Math.sin(theta) }; // downhill on a y-down screen
+      const up = { x: Math.sin(theta), y: -Math.cos(theta) };
+      const incline = (friction: number) =>
+        createRectangle({ width: 2000, height: 20, rotation: theta, type: BodyType.STATIC, material: { friction } });
+      // A point resting on the incline's surface, `back` px uphill of its center
+      const onIncline = (back: number, halfSize: number) => ({
+        x: -back * along.x + (10 + halfSize) * up.x,
+        y: -back * along.y + (10 + halfSize) * up.y,
+      });
+      const travelled = (b: { position: { x: number; y: number } }, start: { x: number; y: number }) =>
+        (b.position.x - start.x) * along.x + (b.position.y - start.y) * along.y;
+      const run = (world: ReturnType<typeof createWorld>, seconds: number) => {
+        for (let i = 0; i < seconds * 60; i++) step(world, 1 / 60);
+      };
+
+      it('should roll a disk down an incline at 2/3 g sinθ without slipping', () => {
+        const world = createWorld({ gravity: { x: 0, y: g } });
+        addBody(world, incline(0.5));
+        const start = onIncline(400, 10);
+        const disk = createCircle({ position: start, radius: 10, material: { friction: 0.5, restitution: 0 } });
+        addBody(world, disk);
+
+        run(world, 1);
+
+        // Solid disk: a = g sinθ / (1 + I/(m r²)) = 2/3 g sinθ → 66.7 px in 1 s
+        const expected = 0.5 * (2 / 3) * g * Math.sin(theta);
+        expect(travelled(disk, start)).toBeGreaterThan(expected * 0.97);
+        expect(travelled(disk, start)).toBeLessThan(expected * 1.06); // first-order integrator bias
+        // Rolling without slipping: v = ω r
+        const v = disk.velocity.x * along.x + disk.velocity.y * along.y;
+        expect(Math.abs(v - disk.angularVelocity * 10)).toBeLessThan(1);
+      });
+
+      it('should slide a box down an incline at g(sinθ - μ cosθ) when μ < tanθ', () => {
+        const world = createWorld({ gravity: { x: 0, y: g } });
+        addBody(world, incline(0.3));
+        const start = onIncline(400, 10);
+        const crate = createRectangle({ position: start, width: 20, height: 20, rotation: theta, material: { friction: 0.3, restitution: 0 } });
+        addBody(world, crate);
+
+        run(world, 1);
+
+        const expected = 0.5 * g * (Math.sin(theta) - 0.3 * Math.cos(theta)); // 48.0 px
+        expect(travelled(crate, start)).toBeGreaterThan(expected * 0.97);
+        expect(travelled(crate, start)).toBeLessThan(expected * 1.08);
+        expect(crate.rotation).toBeCloseTo(theta, 3); // slides, doesn't tumble
+      });
+
+      it('should mostly hold a box on an incline when μ > tanθ (bounded creep)', () => {
+        const world = createWorld({ gravity: { x: 0, y: g } });
+        addBody(world, incline(0.8));
+        const start = onIncline(400, 10);
+        const crate = createRectangle({ position: start, width: 20, height: 20, rotation: theta, material: { friction: 0.8, restitution: 0 } });
+        addBody(world, crate);
+
+        run(world, 1);
+
+        // Ideal: 0. step() integrates positions before contacts fix velocities,
+        // so a resting body creeps g·sinθ·dt² per frame (≈3.3 px/s here) until
+        // the velocity/position split lands; this bound guards it from growing
+        expect(travelled(crate, start)).toBeLessThan(4);
+      });
+
+      it('should stop a sliding box after v²/(2 μ g)', () => {
+        const world = createWorld({ gravity: { x: 0, y: g } });
+        addBody(world, createRectangle({ position: { x: 0, y: 20 }, width: 4000, height: 20, type: BodyType.STATIC, material: { friction: 0.5 } }));
+        const crate = createRectangle({ position: { x: 0, y: -10 }, width: 20, height: 20, velocity: { x: 300, y: 0 }, material: { friction: 0.5, restitution: 0 } });
+        addBody(world, crate);
+
+        run(world, 3);
+
+        const expected = (300 * 300) / (2 * 0.5 * g); // 225 px
+        expect(crate.velocity.x).toBeCloseTo(0, 6);
+        expect(crate.position.x).toBeGreaterThan(expected * 0.97);
+        expect(crate.position.x).toBeLessThan(expected * 1.06);
+        expect(Math.abs(crate.rotation)).toBeLessThan(1e-3); // no tipping from friction
+      });
+
+      it.each([0.3, 0.7, 1.2])('should tip a box dropped at %s rad onto a face', (rotation) => {
+        const world = createWorld({ gravity: { x: 0, y: g } });
+        addBody(world, createRectangle({ position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC }));
+        const crate = createRectangle({ position: { x: 400, y: 300 }, width: 40, height: 40, rotation, material: { restitution: 0 } });
+        addBody(world, crate);
+
+        run(world, 5);
+
+        const quarter = Math.PI / 2;
+        const offFlat = ((crate.rotation % quarter) + quarter) % quarter;
+        expect(Math.min(offFlat, quarter - offFlat)).toBeLessThan(0.02);
+        expect(crate.position.y).toBeGreaterThan(539);
+        expect(crate.position.y).toBeLessThan(541);
+        expect(Math.abs(crate.angularVelocity)).toBeLessThan(1e-3);
+      });
+    });
+
     describe('rectangles and polygons (SAT)', () => {
       const floor = () =>
         createRectangle({ position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC });
@@ -540,12 +638,13 @@ describe('step', () => {
         height: 20,
         rotation: angle,
         type: BodyType.STATIC,
+        material: { friction: 0 },
       });
       // Start resting on the ramp's upper surface, left of centre
       const up = { x: Math.sin(angle), y: -Math.cos(angle) };
       const along = { x: Math.cos(angle), y: Math.sin(angle) };
       const start = { x: -100 * along.x + 20 * up.x, y: -100 * along.y + 20 * up.y };
-      const ball = createCircle({ position: start, radius: 10, material: { restitution: 0 } });
+      const ball = createCircle({ position: start, radius: 10, material: { restitution: 0, friction: 0 } });
       addBody(world, ramp);
       addBody(world, ball);
 

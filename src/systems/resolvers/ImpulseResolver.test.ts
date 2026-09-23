@@ -3,6 +3,8 @@ import { ImpulseResolver } from './ImpulseResolver';
 import { createCircle, resetBodyIdCounter } from '../../bodies/createCircle';
 import { BodyType } from '../../types/BodyType';
 import type { Contact } from '../../types/Contact.js';
+import { createRectangle } from '../../bodies/createRectangle';
+import * as Vec2 from '../../core/Vector2';
 
 describe('ImpulseResolver', () => {
   let resolver: ImpulseResolver;
@@ -305,6 +307,84 @@ describe('ImpulseResolver', () => {
     });
   });
 
+  describe('rotation and friction', () => {
+    const contactAt = (x: number, y: number, normal = { x: 1, y: 0 }): Contact => ({
+      point: { x, y },
+      points: [{ x, y }],
+      normal,
+      depth: 0 // no positional correction, so momentum checks are exact
+    });
+    const angularMomentum = (bodies: ReturnType<typeof createCircle>[]) =>
+      bodies.reduce(
+        (sum, b) => sum + b.inertia * b.angularVelocity + b.mass * (b.position.x * b.velocity.y - b.position.y * b.velocity.x),
+        0
+      );
+
+    it('should slow tangential motion and spin both circles in a glancing hit with friction', () => {
+      const a = createCircle({ radius: 10, velocity: { x: 10, y: 10 }, material: { friction: 0.5 } });
+      const b = createCircle({ position: { x: 19.5, y: 0 }, radius: 10, material: { friction: 0.5 } });
+      const before = angularMomentum([a, b]);
+
+      resolver.resolve(a, b, contactAt(10, 0));
+
+      expect(a.velocity.y).toBeLessThan(10);
+      expect(a.angularVelocity).not.toBe(0);
+      expect(b.angularVelocity).not.toBe(0);
+      // Impulses are equal and opposite at a shared point: angular momentum
+      // (spin + orbital about the origin) is conserved
+      expect(angularMomentum([a, b])).toBeCloseTo(before, 6);
+    });
+
+    it('should cap friction at μ × normal impulse (Coulomb)', () => {
+      // Fast sideways sliding, gentle normal approach: friction saturates
+      const slider = createCircle({ radius: 10, velocity: { x: 100, y: 5 }, material: { friction: 0.2, restitution: 0 } });
+      const floor = createRectangle({ position: { x: 0, y: 20 }, width: 400, height: 20, type: BodyType.STATIC, material: { friction: 0.2 } });
+      const contact: Contact = { point: { x: 0, y: 10 }, points: [{ x: 0, y: 10 }], normal: { x: 0, y: 1 }, depth: 0.5 };
+
+      resolver.resolve(slider, floor, contact);
+
+      // Normal impulse stops the 5 px/s approach: Δvy = -5; friction Δvx = μ × 5 = 1
+      expect(slider.velocity.y).toBeCloseTo(0, 8);
+      expect(slider.velocity.x).toBeCloseTo(100 - 0.2 * 5, 8);
+    });
+
+    it('should spin a box hit off-center and conserve linear momentum', () => {
+      const box = createRectangle({ width: 40, height: 20, material: { friction: 0, restitution: 1 } });
+      const ball = createCircle({ position: { x: -29, y: 8 }, radius: 10, velocity: { x: 50, y: 0 }, material: { friction: 0, restitution: 1 } });
+      const px = box.mass * box.velocity.x + ball.mass * ball.velocity.x;
+
+      // Ball (A) hits the box's left face (B) 8 px below its center
+      resolver.resolve(ball, box, contactAt(-20, 8));
+
+      expect(box.angularVelocity).toBeLessThan(0); // hit below center from the left: counter-clockwise on screen
+      expect(box.mass * box.velocity.x + ball.mass * ball.velocity.x).toBeCloseTo(px, 6);
+      // e = 1, frictionless: kinetic energy (linear + angular) is conserved
+      const ke = (b: typeof box) => 0.5 * b.mass * Vec2.lengthSq(b.velocity) + 0.5 * b.inertia * b.angularVelocity ** 2;
+      expect(ke(box) + ke(ball)).toBeCloseTo(0.5 * ball.mass * 50 * 50, 3);
+    });
+
+    it('should give symmetric impulses to a box landing flat on two points', () => {
+      const box = createRectangle({ position: { x: 0, y: -10.5 }, width: 40, height: 20, velocity: { x: 0, y: 100 } });
+      const floor = createRectangle({ position: { x: 0, y: 20 }, width: 400, height: 20, type: BodyType.STATIC });
+      const contact: Contact = {
+        point: { x: 0, y: 10 },
+        points: [{ x: -20, y: 10 }, { x: 20, y: 10 }],
+        normal: { x: 0, y: 1 },
+        depth: 0.5
+      };
+
+      resolver.resolve(box, floor, contact);
+
+      expect(box.angularVelocity).toBeCloseTo(0, 12);
+      expect(box.velocity.y).toBeCloseTo(-0.2 * 100, 8); // restitution min(0.2, 0.2)
+    });
+
+    it('should reject a non-integer or non-positive iteration count', () => {
+      expect(() => new ImpulseResolver({ iterations: 0 })).toThrow(RangeError);
+      expect(() => new ImpulseResolver({ iterations: 2.5 })).toThrow(RangeError);
+    });
+  });
+
   describe('restitution combine rule', () => {
     // Head-on, equal masses, approach speed 20: separation speed = e_combined * 20
     const separationSpeed = (resolverUnderTest: ImpulseResolver, eA: number, eB: number) => {
@@ -497,16 +577,18 @@ describe('ImpulseResolver', () => {
       expect(bodyB.velocity.x).toBeGreaterThan(0);
     });
 
-    it('should handle glancing collision', () => {
+    it('should handle glancing collision (frictionless)', () => {
       const bodyA = createCircle({
         position: { x: 0, y: 0 },
         radius: 10,
-        velocity: { x: 10, y: 10 }  // Diagonal
+        velocity: { x: 10, y: 10 },  // Diagonal
+        material: { friction: 0 }
       });
       const bodyB = createCircle({
         position: { x: 15, y: 0 },
         radius: 10,
-        velocity: { x: 0, y: 0 }
+        velocity: { x: 0, y: 0 },
+        material: { friction: 0 }
       });
 
       const contact: Contact = {
