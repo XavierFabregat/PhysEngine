@@ -66,7 +66,6 @@ export default {
     let queued = 0;
     let bounce = RESTITUTION;
     let tick = 0;
-    const before = new Map();
 
     const wall = (x, y, w, h) =>
       addBody(world, createRectangle({ position: { x, y }, width: w, height: h, type: BodyType.STATIC, material: { friction: 0.1 } }));
@@ -152,7 +151,7 @@ export default {
           drop(CENTER_X);
           queued--;
         }
-        stepWorld(world, before);
+        stepWorld(world);
         // Anything that escapes the board is removed
         for (const b of world.bodies) if (b.userData?.kind === 'ball' && b.position.y > 700) removeBody(world, b.id);
       },

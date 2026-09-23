@@ -54,7 +54,6 @@ export default {
     let status = 'Draw a ramp, then release the ball.';
     let flightTime = 0;
     let solved = new Set();
-    const before = new Map();
 
     const inkUsed = () =>
       strokes.reduce((s, stroke) => s + stroke.length, 0) + (drawing ? drawing.length : 0);
@@ -151,7 +150,7 @@ export default {
 
     return {
       update() {
-        stepWorld(world, before);
+        stepWorld(world);
         if (ball) {
           flightTime += DT;
           if (ball.position.y > 680 || ball.position.x < -60 || ball.position.x > 1020) {

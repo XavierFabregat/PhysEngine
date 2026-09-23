@@ -68,23 +68,8 @@ export const startLoop = (update, render) => {
   return () => cancelAnimationFrame(frame);
 };
 
-/** Steps the world, remembering each body's velocity from before the step. */
-export const stepWorld = (world, velocitiesBefore) => {
-  velocitiesBefore.clear();
-  for (const b of world.bodies) velocitiesBefore.set(b.id, { x: b.velocity.x, y: b.velocity.y });
-  step(world, DT);
-};
-
-/**
- * How hard a contact hit: approach speed along the normal, from the
- * velocities before the step (after the step the solver has already
- * stopped the bodies).
- */
-export const impactSpeed = (bodyA, bodyB, contact, velocitiesBefore) => {
-  const vA = velocitiesBefore.get(bodyA.id) ?? bodyA.velocity;
-  const vB = velocitiesBefore.get(bodyB.id) ?? bodyB.velocity;
-  return Math.max(0, -((vB.x - vA.x) * contact.normal.x + (vB.y - vA.y) * contact.normal.y));
-};
+/** Advances the world by one fixed step. */
+export const stepWorld = (world) => step(world, DT);
 
 /** Graph-paper background with a 100 px scale bar (world units are px). */
 export const drawPaper = (ctx, colors) => {

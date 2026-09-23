@@ -82,6 +82,8 @@ interface PointConstraint {
 
 /** Solver state for one contact (1 or 2 points). */
 interface ContactConstraint {
+  /** The contact being solved (its impulse totals are written back) */
+  contact: Contact;
   bodyA: Body;
   bodyB: Body;
   normal: Vector2;
@@ -259,6 +261,12 @@ export class ImpulseResolver implements CollisionResolver {
       }
     }
 
+    // Report the applied impulses on each contact (read by event handlers)
+    for (const c of constraints) {
+      c.contact.normalImpulse = c.points.reduce((sum, p) => sum + p.normalImpulse, 0);
+      c.contact.tangentImpulse = c.points.reduce((sum, p) => sum + p.tangentImpulse, 0);
+    }
+
     // Remember this step's impulses; contacts that ended are dropped
     if (warm) {
       this.cache = new Map();
@@ -373,6 +381,7 @@ export class ImpulseResolver implements CollisionResolver {
     }
 
     const constraint: ContactConstraint = {
+      contact,
       bodyA,
       bodyB,
       normal: n,
