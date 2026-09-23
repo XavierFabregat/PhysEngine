@@ -1,5 +1,6 @@
 import type { Body } from './Body.js';
-import type { Contact } from './Contact.js';
+import type { Contact, ContactPair } from './Contact.js';
+import type { Vector2 } from '../core/Vector2.js';
 
 /**
  * Collision resolver interface for collision response.
@@ -14,9 +15,8 @@ import type { Contact } from './Contact.js';
  * 3. Resolver: Apply physics response
  * 
  * Different implementations offer different trade-offs:
- * - ImpulseResolver: Industry standard, handles friction well
+ * - ImpulseResolver: Sequential impulses with rotation and friction (default)
  * - PositionResolver: Simpler, position-based (PBD-style)
- * - IterativeResolver: More accurate, solves contacts multiple times
  */
 export interface CollisionResolver {
   /**
@@ -45,5 +45,29 @@ export interface CollisionResolver {
    * }
    */
   resolve(bodyA: Body, bodyB: Body, contact: Contact): void;
-}
 
+  /**
+   * Velocity phase for all of a step's contacts at once (optional).
+   *
+   * Called by `step()` after velocities are integrated and before positions
+   * are, so impulses stop bodies before they move into each other. Solving
+   * every contact together (iteratively) is what keeps stacks stable.
+   * Resolvers without it are called through `resolve()` per contact.
+   *
+   * @param contacts - Every contact found this step
+   * @param dt - Time step in seconds (for speculative contacts)
+   * @param gravity - World gravity; lets restitution use the approach speed
+   *   from before this step's gravity was added (otherwise every bounce
+   *   gains g·dt of speed)
+   */
+  solveVelocities?(contacts: readonly ContactPair[], dt: number, gravity?: Vector2): void;
+
+  /**
+   * Position phase (optional): pushes still-overlapping bodies apart after
+   * positions are integrated. Called with the same contacts as
+   * `solveVelocities`.
+   *
+   * @param contacts - Every contact found this step
+   */
+  correctPositions?(contacts: readonly ContactPair[]): void;
+}

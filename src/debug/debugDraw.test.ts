@@ -42,8 +42,23 @@ describe('debugDraw', () => {
 
     expect(renderer.calls[0]).toEqual(['clear']);
     expect(renderer.calls[1]).toEqual(['drawCircle', 1, 2, 5, '#4488ff']);
-    expect(renderer.calls[2]).toEqual(['drawRect', 0, 0, 4, 2, 0.5, '#4488ff']);
-    expect(renderer.calls).toHaveLength(3);
+    // Orientation line from the center to the rim (rotation 0 → +x)
+    expect(renderer.calls[2]).toEqual(['drawLine', { x: 1, y: 2 }, { x: 6, y: 2 }, '#4488ff']);
+    expect(renderer.calls[3]).toEqual(['drawRect', 0, 0, 4, 2, 0.5, '#4488ff']);
+    expect(renderer.calls).toHaveLength(4);
+  });
+
+  it('should rotate the circle orientation line with the body', () => {
+    const world = createWorld();
+    addBody(world, createCircle({ radius: 10, rotation: Math.PI / 2 }));
+    const renderer = createRecorder();
+
+    debugDraw(world, renderer);
+
+    const [, start, end] = renderer.calls.find(([m]) => m === 'drawLine')! as [string, { x: number; y: number }, { x: number; y: number }];
+    expect(start).toEqual({ x: 0, y: 0 });
+    expect(end.x).toBeCloseTo(0, 10);
+    expect(end.y).toBeCloseTo(10, 10); // +x rotated toward +y
   });
 
   it('should draw body IDs when showIds is enabled', () => {
@@ -63,7 +78,7 @@ describe('debugDraw', () => {
     const renderer = createRecorder(false);
 
     expect(() => debugDraw(world, renderer, { showIds: true })).not.toThrow();
-    expect(methods(renderer.calls)).toEqual(['clear', 'drawCircle']);
+    expect(methods(renderer.calls)).toEqual(['clear', 'drawCircle', 'drawLine']);
   });
 
   it('should draw AABBs, velocity arrows and center of mass when enabled', () => {

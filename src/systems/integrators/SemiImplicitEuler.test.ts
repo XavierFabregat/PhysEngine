@@ -298,4 +298,34 @@ describe('SemiImplicitEulerIntegrator', () => {
       expect(new VerletIntegrator()).toBeInstanceOf(SemiImplicitEulerIntegrator);
     });
   });
+
+  describe('split halves', () => {
+    it('should equal integrate() when run as integrateVelocity then integratePosition', () => {
+      const whole = createCircle({ radius: 5, velocity: { x: 3, y: -2 }, angularVelocity: 1 });
+      const split = createCircle({ radius: 5, velocity: { x: 3, y: -2 }, angularVelocity: 1 });
+      whole.force = split.force = { x: 7, y: 11 };
+      whole.torque = split.torque = 2;
+
+      integrator.integrate(whole, 1 / 60, { x: 0, y: 400 });
+      integrator.integrateVelocity(split, 1 / 60, { x: 0, y: 400 });
+      integrator.integratePosition(split, 1 / 60);
+
+      expect(split.position).toEqual(whole.position);
+      expect(split.velocity).toEqual(whole.velocity);
+      expect(split.rotation).toBe(whole.rotation);
+      expect(split.angularVelocity).toBe(whole.angularVelocity);
+    });
+
+    it('should only change velocities in integrateVelocity and only positions in integratePosition', () => {
+      const body = createCircle({ radius: 5, position: { x: 1, y: 2 }, velocity: { x: 3, y: 4 } });
+
+      integrator.integrateVelocity(body, 1, { x: 0, y: 10 });
+      expect(body.position).toEqual({ x: 1, y: 2 });
+      expect(body.velocity).toEqual({ x: 3, y: 14 });
+
+      integrator.integratePosition(body, 1);
+      expect(body.position).toEqual({ x: 4, y: 16 });
+      expect(body.velocity).toEqual({ x: 3, y: 14 });
+    });
+  });
 });
