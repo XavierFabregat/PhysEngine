@@ -1,10 +1,11 @@
 // Ramp Sketch: draw lines to guide a ball into the goal cup.
-// Uses: static boxes built from strokes, rolling friction, a rotating
+// Uses: one chain body per drawn stroke, rolling friction, a rotating
 // kinematic paddle, sensor goal + onCollisionStart.
 import {
   createWorld,
   createCircle,
   createRectangle,
+  createChain,
   addBody,
   removeBody,
   onCollisionStart,
@@ -14,7 +15,8 @@ import { drawPaper, drawBody, defaultStyle, stepWorld, DT } from './kit.js';
 
 const INK_BUDGET = 900;
 const MIN_SEGMENT = 14;
-const THICKNESS = 8;
+// Drawn width of ink strokes (the chain itself is a zero-thickness line)
+const STROKE_WIDTH = 3;
 
 const LEVELS = [
   { name: 'Downhill', start: { x: 110, y: 70 }, goal: { x: 820, y: 540 }, walls: [], spinner: null },
@@ -37,7 +39,7 @@ export default {
     'Press Release ball: it drops from the dashed circle. Get it into the teal cup.',
     'Level 3 adds a spinning paddle: a kinematic body that bats the ball.',
   ],
-  features: ['Static boxes from strokes', 'Rolling friction', 'Kinematic paddle', 'Sensor goal', 'onCollisionStart'],
+  features: ['createChain per stroke', 'Rolling friction', 'Kinematic paddle', 'Sensor goal', 'onCollisionStart'],
   controls: [
     { id: 'release', label: 'Release ball', kind: 'button' },
     { id: 'undo', label: 'Undo stroke', kind: 'button' },
@@ -90,26 +92,15 @@ export default {
     };
     loadLevel(0);
 
-    // A stroke becomes a chain of thin static boxes, one per segment
+    // A stroke becomes one chain body (a polyline through its points)
     const commitStroke = (stroke) => {
-      const bodies = [];
-      for (let i = 1; i < stroke.points.length; i++) {
-        const a = stroke.points[i - 1];
-        const b = stroke.points[i];
-        const length = Math.hypot(b.x - a.x, b.y - a.y);
-        const segment = createRectangle({
-          position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-          width: length + THICKNESS, // overlap at the joints so the ball rolls smoothly
-          height: THICKNESS,
-          rotation: Math.atan2(b.y - a.y, b.x - a.x),
-          type: BodyType.STATIC,
-          material: { friction: 0.5, restitution: 0.05 },
-          userData: { kind: 'ink' },
-        });
-        addBody(world, segment);
-        bodies.push(segment);
-      }
-      strokes.push({ length: stroke.length, bodies, points: stroke.points });
+      const chain = createChain({
+        points: stroke.points,
+        material: { friction: 0.5, restitution: 0.05 },
+        userData: { kind: 'ink' },
+      });
+      addBody(world, chain);
+      strokes.push({ length: stroke.length, bodies: [chain], points: stroke.points });
     };
 
     const onDown = (e) => {
@@ -175,7 +166,7 @@ export default {
         }
         // Ink strokes
         ctx.strokeStyle = colors.ink;
-        ctx.lineWidth = THICKNESS;
+        ctx.lineWidth = STROKE_WIDTH;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         for (const stroke of [...strokes, ...(drawing ? [drawing] : [])]) {

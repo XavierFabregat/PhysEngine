@@ -50,7 +50,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ### ✅ Bodies & World
 
-- **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density and optional linear/angular damping. Invalid sizes or densities throw a `RangeError`.
+- **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid), `createChain` (static/kinematic polylines) (static, dynamic, kinematic), with mass and inertia from shape × density and optional linear/angular damping. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
 - **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules, iterations, restitution threshold and warm starting, positional correction; sensors detect without responding)
@@ -237,6 +237,19 @@ applyTorque(wheel, 50);                                               // for the
 
 Points are in world space and default to the center of mass; static and kinematic bodies ignore these.
 
+### Chains (terrain and drawn lines)
+
+```typescript
+import { createChain } from '@xavifabregat/physengine';
+
+const ground = createChain({
+  points: [{ x: 0, y: 500 }, { x: 300, y: 540 }, { x: 600, y: 520 }, { x: 960, y: 560 }],
+  // loop: true closes it; type: 'kinematic' lets it move or rotate
+});
+```
+
+A chain is a zero-thickness polyline with no mass (static or kinematic only). One chain replaces a row of boxes: a box sliding across its joints doesn't hop or snag (segments push only along their own normals, and only the free ends have caps), and it's a single body instead of one per segment. Circles, rectangles and polygons collide with chains; raycasts, `queryAABB`, CCD bullets and `debugDraw` handle them too.
+
 ### Fast bodies (continuous collision)
 
 A body that moves farther in one step than it and a wall are thick can pass straight through. Mark projectiles as bullets and their path is swept every step instead:
@@ -404,7 +417,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
 Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
-- **Chain shapes** - Static polylines for terrain and drawn lines
 - **Then** - Spatial broad phase for bodies and queries, sleeping, configurable world scale, constraints
 
 ## Design Goals

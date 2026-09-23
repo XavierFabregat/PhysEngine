@@ -103,6 +103,12 @@ export const debugDraw = (
           Transform.transformPoint(transform, v)
         );
         renderer.drawPolygon(worldVertices, bodyColor);
+      } else if (body.shape.type === 'chain') {
+        // Open polyline (closed if it loops)
+        const transform = Transform.create(body.position, body.rotation);
+        const points = body.shape.vertices.map((v) => Transform.transformPoint(transform, v));
+        for (let i = 1; i < points.length; i++) renderer.drawLine(points[i - 1]!, points[i]!, bodyColor);
+        if (body.shape.loop) renderer.drawLine(points[points.length - 1]!, points[0]!, bodyColor);
       }
     }
 

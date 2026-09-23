@@ -128,6 +128,17 @@ export const drawBody = (ctx, body, style) => {
   ctx.fillStyle = style.fill;
   ctx.globalAlpha = style.alpha ?? 1;
   ctx.beginPath();
+  if (body.shape.type === 'chain') {
+    // Polyline: stroke only
+    const points = worldVertices(body);
+    ctx.moveTo(points[0].x, points[0].y);
+    for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
+    if (body.shape.loop) ctx.closePath();
+    ctx.globalAlpha = 1;
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
   if (body.shape.type === 'circle') {
     ctx.arc(body.position.x, body.position.y, body.shape.radius, 0, Math.PI * 2);
   } else {

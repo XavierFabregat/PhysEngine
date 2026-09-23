@@ -6,6 +6,7 @@ import { detectCircleCircle } from './circleCircle.js';
 import { detectCircleRectangle } from './circleRectangle.js';
 import { detectCirclePolygon } from './circlePolygon.js';
 import { detectPolygonPolygon } from './polygonPolygon.js';
+import { detectCircleChain, detectPolygonChain } from './chain.js';
 
 /**
  * A shape-pair collision test. Receives the bodies in the order it was
@@ -30,6 +31,7 @@ type ShapeType = Shape['type'];
  * - circle / rectangle
  * - circle / polygon
  * - rectangle / rectangle, rectangle / polygon, polygon / polygon (SAT)
+ * - circle / chain, rectangle / chain, polygon / chain (chains don't collide with each other)
  *
  * @example
  * const narrowPhase = new ShapeDispatchNarrowPhase();
@@ -46,6 +48,9 @@ export class ShapeDispatchNarrowPhase implements NarrowPhase {
     this.register('rectangle', 'rectangle', detectPolygonPolygon);
     this.register('rectangle', 'polygon', detectPolygonPolygon);
     this.register('polygon', 'polygon', detectPolygonPolygon);
+    this.register('circle', 'chain', detectCircleChain);
+    this.register('rectangle', 'chain', detectPolygonChain);
+    this.register('polygon', 'chain', detectPolygonChain);
   }
 
   /**

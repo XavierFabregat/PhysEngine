@@ -180,9 +180,9 @@ Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whi
 5. ✅ **Continuous collision detection** *(moved up from v1.2)* — `isBullet: true` sweeps the body's path each step (ray vs. the target inflated by the bullet's radius; polygon bullets use their inscribed circle) and pulls it back to the first impact (done).
    - *Why:* the slingshot was capped at 960 px/s; measured, balls start tunneling through its 20 px posts above ~1800 px/s (8 of 30 full-power shots at 2160 px/s). It now fires at up to 2160 px/s as a bullet.
    - *Done when:* a 3000 px/s ball can't pass through a 10 px wall (the tunneling sweep from the audit reports 0/50).
-6. **Chain / edge shapes** *(moved up from v2.1)* — a static polyline shape, `createChain(points)`.
-   - *Why:* Ramp Sketch turns each stroke into dozens of overlapping rectangles: bumpy joints and one body per segment.
-   - *Done when:* a ball rolls along a drawn chain without bumps at the joints; Ramp Sketch uses one chain per stroke.
+6. ✅ **Chain / edge shapes** *(moved up from v2.1)* — `createChain({ points, loop? })`, static or kinematic (done).
+   - *Why:* Ramp Sketch turned each stroke into dozens of overlapping rectangles, one body per segment. Measured on a drawn stroke: a frictionless box sliding over those joints spent 40 steps airborne (hopping); on a chain, 0. (A rolling ball was smooth on both, so balls weren't the problem.)
+   - *Done when (met):* a box slides along a drawn chain without leaving it, a ball rolls down one with no speed drops, and Ramp Sketch uses one chain per stroke.
 7. **Spatial acceleration for queries** *(extends the Spatial Hash broad phase in v1.0 and v1.1 Queries)* — `raycast`/`queryAABB` use the broad phase instead of scanning every body; add `raycastAll`, `queryRadius`, and a batch raycast.
    - *Why:* the Lidar rover casts 180 rays a frame, each against every body; the Galton board runs ~90 balls against ~175 pegs with the O(n²) broad phase.
 8. **Sleeping** *(moved up from v1.1 Performance)*.
@@ -366,7 +366,7 @@ Support for more shape types.
 
 #### Shapes
 - [ ] Concave polygon decomposition (auto-split into convex)
-- [ ] Edge/chain shapes (static terrain) *(moved up: Next #6)*
+- [x] Edge/chain shapes (static terrain) *(done: Next #6)*
 - [ ] Capsule shape
 
 ---

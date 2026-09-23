@@ -3,6 +3,7 @@ import type { Body } from '../types/Body.js';
 import type { Vector2 } from '../core/Vector2.js';
 import type { RaycastOptions, RaycastHit } from '../types/Query.js';
 import { toWorldPolygon } from '../systems/narrowphase/polygonGeometry.js';
+import { chainSegments } from '../systems/narrowphase/chain.js';
 import { passesFilter } from './filter.js';
 
 /** Distance along a unit ray to where it hits a body, with the surface normal. */
@@ -94,6 +95,31 @@ const rayPolygon = (body: Body, o: Vector2, d: Vector2): ShapeHit | null => {
 };
 
 /**
+ * Ray vs chain: the nearest segment crossing. The normal faces the side the
+ * ray comes from (chains are two-sided).
+ */
+const rayChain = (body: Body, o: Vector2, d: Vector2): ShapeHit | null => {
+  let best: ShapeHit | null = null;
+  for (const { a, b } of chainSegments(body)) {
+    const ex = b.x - a.x;
+    const ey = b.y - a.y;
+    const denominator = d.x * ey - d.y * ex;
+    if (denominator === 0) continue; // parallel
+    const qx = a.x - o.x;
+    const qy = a.y - o.y;
+    const t = (qx * ey - qy * ex) / denominator; // along the ray
+    const s = (qx * d.y - qy * d.x) / denominator; // along the segment
+    if (t <= 0 || s < 0 || s > 1) continue;
+    if (best && t >= best.distance) continue;
+    const length = Math.hypot(ex, ey);
+    let normal = { x: -ey / length, y: ex / length };
+    if (normal.x * d.x + normal.y * d.y > 0) normal = { x: -normal.x, y: -normal.y };
+    best = { distance: t, normal };
+  }
+  return best;
+};
+
+/**
  * Casts a ray and returns the closest body it hits.
  *
  * - Rays starting inside a shape ignore that shape (cast from inside your
@@ -131,7 +157,9 @@ export const raycast = (world: World, options: RaycastOptions): RaycastHit | nul
     const hit =
       body.shape.type === 'circle'
         ? rayCircle(body, body.shape.radius, origin, d)
-        : rayPolygon(body, origin, d);
+        : body.shape.type === 'chain'
+          ? rayChain(body, origin, d)
+          : rayPolygon(body, origin, d);
     if (!hit || hit.distance > bestDistance) continue;
 
     bestDistance = hit.distance;

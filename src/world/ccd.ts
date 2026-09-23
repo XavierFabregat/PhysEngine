@@ -3,6 +3,7 @@ import type { Body } from '../types/Body.js';
 import type { Vector2 } from '../core/Vector2.js';
 import { shouldCollide } from '../types/Body.js';
 import { toWorldPolygon } from '../systems/narrowphase/polygonGeometry.js';
+import { chainSegments } from '../systems/narrowphase/chain.js';
 
 /**
  * How far (world units) a stopped bullet is left overlapping what it hit, so
@@ -18,6 +19,7 @@ const CCD_SKIN = 0.1;
  */
 const sweepRadius = (body: Body): number => {
   if (body.shape.type === 'circle') return body.shape.radius;
+  if (body.shape.type === 'chain') return 0; // chains are never dynamic
   let inscribed = Infinity;
   const vertices = body.shape.vertices;
   for (let i = 0; i < vertices.length; i++) {
@@ -104,6 +106,41 @@ const sweepCirclePolygon = (p: Vector2, d: Vector2, r: number, target: Body): nu
   return best;
 };
 
+/**
+ * Earliest time t ∈ [0, 1] at which a circle of radius r moving from p by d
+ * touches a chain: each segment inflated into a capsule (both sides pushed
+ * out by r, rounded ends). Segments it already overlaps are skipped.
+ */
+const sweepCircleChain = (p: Vector2, d: Vector2, r: number, target: Body): number | null => {
+  let best: number | null = null;
+  for (const { a, b } of chainSegments(target)) {
+    const ex = b.x - a.x;
+    const ey = b.y - a.y;
+    const length = Math.hypot(ex, ey);
+    // Already within r of this segment: leave it to the regular contact
+    const s0 = Math.max(0, Math.min(1, ((p.x - a.x) * ex + (p.y - a.y) * ey) / (length * length)));
+    if (Math.hypot(p.x - (a.x + ex * s0), p.y - (a.y + ey * s0)) < r) continue;
+
+    for (const side of [1, -1]) {
+      const n = { x: (-ey / length) * side, y: (ex / length) * side };
+      const approach = n.x * d.x + n.y * d.y;
+      if (approach >= 0) continue;
+      const distance = n.x * (p.x - a.x) + n.y * (p.y - a.y) - r;
+      if (distance < 0) continue;
+      const t = distance / -approach;
+      const hx = p.x + d.x * t - n.x * r;
+      const hy = p.y + d.y * t - n.y * r;
+      const s = ((hx - a.x) * ex + (hy - a.y) * ey) / (length * length);
+      if (s >= 0 && s <= 1 && t <= 1 && (best === null || t < best)) best = t;
+    }
+    for (const end of [a, b]) {
+      const t = rayCircleTime(p, d, end, r);
+      if (t !== null && t <= 1 && (best === null || t < best)) best = t;
+    }
+  }
+  return best;
+};
+
 /** Swept AABB of the bullet's motion overlaps the target's AABB (cheap rejection). */
 const sweptBoundsOverlap = (start: Vector2, end: Vector2, r: number, target: Body): boolean =>
   Math.min(start.x, end.x) - r <= target.aabb.max.x &&
@@ -143,7 +180,9 @@ export const sweepBullets = (world: World, starts: Map<string, Vector2>): void =
       const t =
         target.shape.type === 'circle'
           ? rayCircleTime(start, d, target.position, r + target.shape.radius)
-          : sweepCirclePolygon(start, d, r, target);
+          : target.shape.type === 'chain'
+            ? sweepCircleChain(start, d, r, target)
+            : sweepCirclePolygon(start, d, r, target);
       if (t !== null && t <= 1 && (earliest === null || t < earliest)) earliest = t;
     }
 

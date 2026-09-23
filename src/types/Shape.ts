@@ -38,10 +38,23 @@ export interface PolygonShape {
 }
 
 /**
+ * Chain shape: a static polyline (terrain, drawn lines, level outlines).
+ * Has no area or mass, so chain bodies must be static or kinematic. Segments
+ * are two-sided; a ball rolls across the joints without catching on them.
+ */
+export interface ChainShape {
+  type: 'chain';
+  /** Polyline points in local space (at least 2) */
+  vertices: readonly Vector2[];
+  /** If true, the last point connects back to the first */
+  loop: boolean;
+}
+
+/**
  * Discriminated union of all shape types.
  * Allows type-safe shape handling.
  */
-export type Shape = CircleShape | RectangleShape | PolygonShape;
+export type Shape = CircleShape | RectangleShape | PolygonShape | ChainShape;
 
 /**
  * Type guard to check if shape is a circle.
@@ -61,3 +74,8 @@ export const isRectangle = (shape: Shape): shape is RectangleShape =>
 export const isPolygon = (shape: Shape): shape is PolygonShape =>
   shape.type === 'polygon';
 
+/**
+ * Type guard to check if shape is a chain.
+ */
+export const isChain = (shape: Shape): shape is ChainShape =>
+  shape.type === 'chain';
