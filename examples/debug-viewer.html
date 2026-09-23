@@ -183,6 +183,7 @@
       
       <button class="primary" id="add-circle">➕ Add Circle</button>
       <button class="primary" id="add-rectangle">➕ Add Rectangle</button>
+      <button class="primary" id="add-polygon">➕ Add Polygon</button>
       
       <div class="button-group">
         <button id="clear-dynamic">Clear Dynamic</button>
@@ -278,6 +279,7 @@
       createWorld,
       createCircle,
       createRectangle,
+      createPolygon,
       addBody,
       removeBody,
       getBodyCount,
@@ -334,19 +336,19 @@
       addBody(world, createCircle({
         position: { x: 200, y: 50 },
         radius: 30,
-        material: { restitution: 0.8, density: 1000 }
+        material: { restitution: 0.8, density: 1 }
       }));
 
       addBody(world, createCircle({
         position: { x: 400, y: 100 },
         radius: 25,
-        material: { restitution: 0.7, density: 1000 }
+        material: { restitution: 0.7, density: 1 }
       }));
 
       addBody(world, createCircle({
         position: { x: 600, y: 75 },
         radius: 20,
-        material: { restitution: 0.9, density: 1000 }
+        material: { restitution: 0.9, density: 1 }
       }));
 
       // Add a super bouncy ball
@@ -354,7 +356,7 @@
         position: { x: 100, y: 150 },
         radius: 15,
         velocity: { x: 150, y: 0 },
-        material: { restitution: 1.0, density: 1000 }
+        material: { restitution: 1.0, density: 1 }
       }));
 
       // Floor and walls are fully elastic: restitution combines by min,
@@ -385,19 +387,45 @@
         material: { restitution: 1 }
       }));
 
+      // Boxes and a triangle (rectangle/polygon collisions via SAT)
+      addBody(world, createRectangle({
+        position: { x: 250, y: 330 },
+        width: 60,
+        height: 40
+      }));
+
+      addBody(world, createRectangle({
+        position: { x: 262, y: 260 },
+        width: 40,
+        height: 40
+      }));
+
+      addBody(world, createPolygon({
+        position: { x: 560, y: 380 },
+        vertices: [{ x: -35, y: 25 }, { x: 35, y: 25 }, { x: 0, y: -30 }]
+      }));
+
+      // Static wedge on the floor
+      addBody(world, createPolygon({
+        position: { x: 690, y: 560 },
+        vertices: [{ x: -70, y: 0 }, { x: 70, y: 0 }, { x: 70, y: -60 }],
+        type: BodyType.STATIC,
+        material: { restitution: 1 }
+      }));
+
       // More bouncing balls!
       addBody(world, createCircle({
         position: { x: 300, y: 200 },
         radius: 35,
         velocity: { x: 80, y: -50 },
-        material: { restitution: 0.85, density: 800 }
+        material: { restitution: 0.85, density: 0.8 }
       }));
 
       addBody(world, createCircle({
         position: { x: 500, y: 250 },
         radius: 28,
         velocity: { x: -60, y: 40 },
-        material: { restitution: 0.75, density: 1200 }
+        material: { restitution: 0.75, density: 1.2 }
       }));
 
       selectedBody = null;
@@ -431,6 +459,29 @@
         width: math.randomRange(30, 80),
         height: math.randomRange(30, 80),
         rotation: math.randomRange(0, Math.PI * 2),
+        velocity: {
+          x: math.randomRange(-30, 30),
+          y: math.randomRange(-20, 20)
+        }
+      }));
+      updateInfo();
+      render();
+    });
+
+    // Add random convex polygon (3-6 sides on a circle, so always convex)
+    document.getElementById('add-polygon').addEventListener('click', () => {
+      const sides = Math.floor(math.randomRange(3, 7));
+      const radius = math.randomRange(20, 40);
+      const offset = math.randomRange(0, Math.PI * 2);
+      addBody(world, createPolygon({
+        position: {
+          x: math.randomRange(100, 700),
+          y: math.randomRange(50, 200)
+        },
+        vertices: Array.from({ length: sides }, (_, i) => ({
+          x: Math.cos(offset + (i / sides) * Math.PI * 2) * radius,
+          y: Math.sin(offset + (i / sides) * Math.PI * 2) * radius
+        })),
         velocity: {
           x: math.randomRange(-30, 30),
           y: math.randomRange(-20, 20)
@@ -708,6 +759,22 @@
           ctx.lineWidth = 3;
           ctx.setLineDash([5, 5]);
           ctx.strokeRect(-width/2 - 4, -height/2 - 4, width + 8, height + 8);
+        } else if (selectedBody.shape.type === 'polygon') {
+          ctx.translate(selectedBody.position.x, selectedBody.position.y);
+          ctx.rotate(selectedBody.rotation);
+          ctx.beginPath();
+          selectedBody.shape.vertices.forEach((v, i) => {
+            // Push each vertex 4 px outward from the centroid
+            const len = Math.hypot(v.x, v.y) || 1;
+            const x = v.x + (v.x / len) * 4;
+            const y = v.y + (v.y / len) * 4;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.strokeStyle = '#ffff00';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
         }
         
         ctx.restore();

@@ -4,6 +4,7 @@ import { step } from './step';
 import { addBody } from './body';
 import { createCircle, resetBodyIdCounter } from '../bodies/createCircle';
 import { createRectangle } from '../bodies/createRectangle';
+import { createPolygon } from '../bodies/createPolygon';
 import { BodyType } from '../types/BodyType';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
 
@@ -347,6 +348,83 @@ describe('step', () => {
   });
 
   describe('collision detection and response', () => {
+    describe('rectangles and polygons (SAT)', () => {
+      const floor = () =>
+        createRectangle({ position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC });
+      const run = (world: ReturnType<typeof createWorld>, seconds: number) => {
+        for (let i = 0; i < seconds * 60; i++) step(world, 1 / 60);
+      };
+
+      it('should land a box flat on the floor', () => {
+        const world = createWorld();
+        const crate = createRectangle({ position: { x: 400, y: 100 }, width: 40, height: 40, material: { restitution: 0 } });
+        addBody(world, floor());
+        addBody(world, crate);
+
+        run(world, 4);
+
+        expect(crate.position.y).toBeGreaterThan(540 - 0.5);
+        expect(crate.position.y).toBeLessThan(540 + 1);
+        expect(Math.abs(crate.velocity.y)).toBeLessThan(1);
+      });
+
+      it('should land a triangle on its base', () => {
+        const world = createWorld();
+        const wedge = createPolygon({
+          position: { x: 400, y: 100 },
+          vertices: [{ x: -30, y: 20 }, { x: 30, y: 20 }, { x: 0, y: -30 }],
+          material: { restitution: 0 },
+        });
+        addBody(world, floor());
+        addBody(world, wedge);
+
+        run(world, 4);
+
+        if (wedge.shape.type !== 'polygon') throw new Error('expected polygon');
+        const base = Math.max(...wedge.shape.vertices.map((v) => v.y + wedge.position.y));
+        expect(base).toBeGreaterThan(560 - 0.5);
+        expect(base).toBeLessThan(560 + 1);
+      });
+
+      it('should keep a stack of boxes ordered and upright (bounded sinking)', () => {
+        const world = createWorld();
+        addBody(world, floor());
+        const boxes = [0, 1, 2, 3, 4].map((i) =>
+          createRectangle({ position: { x: 400, y: 540 - i * 40 }, width: 40, height: 40, material: { restitution: 0 } })
+        );
+        boxes.forEach((b) => addBody(world, b));
+
+        run(world, 6);
+
+        boxes.forEach((b, i) => {
+          expect(b.position.x).toBeCloseTo(400, 6);
+          // The single-pass linear resolver lets stacks compress a few px per
+          // level; this bound guards against it getting worse
+          // (measured: 5.7, 11.5, 15.7, 18.2, 18.8 px)
+          expect(Math.abs(b.position.y - (540 - i * 40))).toBeLessThan(7 + i * 5);
+          if (i > 0) expect(b.position.y).toBeLessThan(boxes[i - 1]!.position.y - 30);
+        });
+      });
+
+      it('should slide a ball down a static triangular ramp onto the floor', () => {
+        const world = createWorld();
+        addBody(world, floor());
+        addBody(world, createPolygon({
+          position: { x: 300, y: 560 },
+          vertices: [{ x: -200, y: 0 }, { x: 200, y: 0 }, { x: -200, y: -200 }],
+          type: BodyType.STATIC,
+        }));
+        const ball = createCircle({ position: { x: 140, y: 330 }, radius: 10, material: { restitution: 0 } });
+        addBody(world, ball);
+
+        run(world, 3);
+
+        expect(ball.position.x).toBeGreaterThan(500); // past the foot of the ramp
+        expect(ball.position.y).toBeGreaterThan(549); // resting height on the floor
+        expect(ball.position.y).toBeLessThan(552);
+      });
+    });
+
     it('should land a falling ball on a static rectangle floor', () => {
       const world = createWorld({ gravity: { x: 0, y: 400 } });
       const floor = createRectangle({

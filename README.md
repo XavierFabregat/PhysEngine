@@ -11,7 +11,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 **Current Version:** 0.2.0  
 **Core Math Layer:** ✅ Complete  
 **Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
-**Collision Detection & Response:** 🚧 Circle-circle and circle-rectangle (brute-force broad phase, impulse bounce, no friction or rotation yet; rectangle-rectangle pending)
+**Collision Detection & Response:** 🚧 All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase, impulse bounce. No friction or rotational response yet, so tilted boxes stay balanced on a corner
 
 ## Conventions
 
@@ -50,10 +50,10 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ### ✅ Bodies & World
 
-- **Body factories** - `createCircle`, `createRectangle` (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
+- **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
-- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (circle-circle, circle-rectangle incl. rotated; extensible via `register`), `ImpulseResolver` (restitution with a configurable combine rule + positional correction; sensors detect without responding)
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (restitution with a configurable combine rule + positional correction; sensors detect without responding)
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -139,6 +139,21 @@ function update() {
   requestAnimationFrame(update);
 }
 ```
+
+### Polygons
+
+```typescript
+import { createPolygon, BodyType } from '@xavifabregat/physengine';
+
+// Vertices are relative to `position`; the body is re-centered on the centroid
+const wedge = createPolygon({
+  position: { x: 690, y: 560 },
+  vertices: [{ x: -70, y: 0 }, { x: 70, y: 0 }, { x: 70, y: -60 }],
+  type: BodyType.STATIC,
+});
+```
+
+Convex outlines only (concave or self-intersecting ones throw); either winding is accepted.
 
 ### Choosing how bounciness combines
 
@@ -255,7 +270,7 @@ PhysEngine/
 │   ├── systems/
 │   │   ├── integrators/   # SemiImplicitEuler (default)
 │   │   ├── broadphase/    # BruteForce
-│   │   ├── narrowphase/   # circleCircle, circleRectangle, ShapeDispatch
+│   │   ├── narrowphase/   # circle/rectangle/polygon detectors, SAT, ShapeDispatch
 │   │   └── resolvers/     # ImpulseResolver
 │   ├── debug/             # DebugRenderer interface, debugDraw, CanvasRenderer
 │   ├── index.ts           # Main (headless) entry point
@@ -270,10 +285,9 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Narrow phase** - Rectangle/polygon SAT with a 2-point contact manifold
-- **Collision Response** - Friction and rotational (angular) impulses
+- **Collision Response** - Friction and rotational (angular) impulses (the 2-point manifold is already produced)
+- **Solver stability** - Iterative contact solving: stacks currently compress a few px per level, and very large mass ratios (≈1000:1) let a heavy body crush a light one
 - **Broad phase** - Spatial hash once body counts demand it
-- **Polygon bodies** - `createPolygon` (mass/inertia helpers already in place)
 - **Constraints** - Springs, rods, pins
 - **Events** - Collision callbacks
 

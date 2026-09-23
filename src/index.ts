@@ -47,6 +47,9 @@ export type { CircleConfig } from './bodies/createCircle.js';
 export { createRectangle } from './bodies/createRectangle.js';
 export type { RectangleConfig } from './bodies/createRectangle.js';
 
+export { createPolygon } from './bodies/createPolygon.js';
+export type { PolygonConfig } from './bodies/createPolygon.js';
+
 export { computeShapeAABB, updateBodyAABB } from './bodies/aabb.js';
 
 // ============================================================
@@ -88,6 +91,8 @@ export { BruteForceBroadPhase } from './systems/broadphase/BruteForce.js';
 // Narrow phase
 export { detectCircleCircle } from './systems/narrowphase/circleCircle.js';
 export { detectCircleRectangle } from './systems/narrowphase/circleRectangle.js';
+export { detectCirclePolygon } from './systems/narrowphase/circlePolygon.js';
+export { detectPolygonPolygon } from './systems/narrowphase/polygonPolygon.js';
 export { ShapeDispatchNarrowPhase } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
 export type { ShapeDetector } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
 

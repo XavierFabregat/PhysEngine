@@ -43,7 +43,8 @@ export interface WorldConfig {
 
   /**
    * Narrow phase collision detection system.
-   * Default: ShapeDispatchNarrowPhase (circle/circle, circle/rectangle)
+   * Default: ShapeDispatchNarrowPhase (all built-in shape pairs: circle,
+   * rectangle and convex polygon; polygons and rectangles via SAT)
    *
    * Extend it with `register(typeA, typeB, detector)` or swap in any
    * implementation of the NarrowPhase interface.

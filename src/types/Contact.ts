@@ -16,9 +16,19 @@ export interface Contact {
    * For circle-circle: point on circle A's surface along the collision normal
    * For circle-rect: point on the rectangle boundary closest to the circle
    *   center (on the nearest face when the center is inside the rectangle)
-   * For rect-rect: not implemented yet (planned: SAT with a contact manifold)
+   * For polygon-polygon (incl. rectangles): midpoint of `points`
    */
   point: Vector2;
+
+  /**
+   * All contact points of the manifold in world space (1 or 2).
+   *
+   * Two points when edges touch (e.g. a box resting flat on a floor), which
+   * is what rotational response and friction need to keep boxes stable.
+   * Circle contacts have a single point. Optional so custom narrow phases
+   * can omit it; consumers should fall back to `[point]`.
+   */
+  points?: readonly Vector2[];
 
   /**
    * Contact normal vector (unit length).
