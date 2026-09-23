@@ -24,7 +24,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # npm >= 11.5.1 is needed for trusted publishing (OIDC); npm 12
+          # requires Node ^22.22.2 || ^24.15.0, so use Node 24
+          node-version: '24'
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
       
@@ -38,7 +40,9 @@ jobs:
         run: pnpm build
       
       - name: Update npm for OIDC support
-        run: npm install -g npm@latest
+        # Pinned to a major: npm@latest (12.x) dropped Node 20 and broke the
+        # v0.3.0 publish; bump deliberately
+        run: npm install -g npm@11
       
       - name: Publish to npm
         run: npm publish --provenance --access public
