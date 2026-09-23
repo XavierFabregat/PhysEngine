@@ -55,6 +55,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
 - **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules, iterations, restitution threshold and warm starting, positional correction; sensors detect without responding)
 - **Events** - `onCollisionStart` / `onCollisionActive` / `onCollisionEnd` (sensors included); `world.contacts` holds the last step's contacts
+- **Queries** - `raycast` (closest hit with point, normal, distance), `queryPoint`, `queryAABB` (exact shapes), with layer/sensor/predicate filters
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -178,6 +179,24 @@ off(); // unsubscribe
 ```
 
 Handlers run at the end of `step()`, so they can add or remove bodies. Sensors fire events without responding physically, which makes them trigger zones. The last step's contacts are also available as `world.contacts`, and `debugDraw(world, renderer, { showContacts: true })` draws them.
+
+### World queries
+
+```typescript
+import { raycast, queryPoint, queryAABB } from '@xavifabregat/physengine';
+
+// Line of sight: closest hit (sensors skipped; shapes containing the origin ignored)
+const hit = raycast(world, { origin: gun, direction: aim, maxDistance: 500, filter: { collidesWith: Layers.WORLD } });
+if (hit) console.log(hit.body.id, hit.point, hit.normal, hit.distance);
+
+// Picking: bodies whose shape contains the point
+const [picked] = queryPoint(world, mousePosition);
+
+// Selection box: bodies whose shape (not just AABB) overlaps the region
+const selected = queryAABB(world, { min: { x: 0, y: 0 }, max: { x: 200, y: 100 } });
+```
+
+Filters: `collidesWith` (layer mask), `includeSensors`, `predicate`.
 
 ### Solver settings
 
