@@ -225,6 +225,18 @@ const selected = queryAABB(world, { min: { x: 0, y: 0 }, max: { x: 200, y: 100 }
 
 Filters: `collidesWith` (layer mask), `includeSensors`, `predicate`.
 
+### Forces and impulses
+
+```typescript
+import { applyForce, applyImpulse, applyTorque } from '@xavifabregat/physengine';
+
+applyForce(rover, { x: 900 * rover.mass, y: 0 });                     // sustained: call every step
+applyImpulse(ball, { x: 0, y: -300 * ball.mass }, kickPoint);         // instant; off-centre adds spin
+applyTorque(wheel, 50);                                               // for the next step
+```
+
+Points are in world space and default to the center of mass; static and kinematic bodies ignore these.
+
 ### Damping
 
 Bodies don't slow down on their own unless you give them damping (rates in 1/s; speed decays as `v₀·e^(−d·t)`):
@@ -382,7 +394,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
 Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
-- **Forces API** - `applyForce` / `applyImpulse` / `applyTorque`, including at a point
 - **Continuous collision** - Fast, small bodies can still tunnel through thin ones
 - **Chain shapes** - Static polylines for terrain and drawn lines
 - **Then** - Spatial broad phase for bodies and queries, sleeping, configurable world scale, constraints
