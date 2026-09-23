@@ -171,9 +171,11 @@ export interface Body {
   isAwake: boolean;
 
   /**
-   * If true, use continuous collision detection (CCD) for this body.
-   * Prevents tunneling for fast/small objects.
-   * More expensive, use only when needed.
+   * If true, use continuous collision detection (CCD) for this body: its
+   * path each step is swept against everything it can collide with, so a
+   * fast, small body can't pass through thin ones. Costs a swept test per
+   * nearby body per step; use it for projectiles, not everything. Polygon
+   * bullets are swept as their inscribed circle.
    */
   isBullet: boolean;
 }

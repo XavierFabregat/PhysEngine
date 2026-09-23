@@ -16,7 +16,10 @@ import { HEIGHT, drawPaper, drawBody, defaultStyle, createBursts, stepWorld } fr
 
 const ANCHOR = { x: 170, y: 430 };
 const MAX_PULL = 120;
-const LAUNCH_GAIN = 8; // px/s of launch speed per px of pull
+// px/s of launch speed per px of pull: up to 2160 px/s (36 px per step). Above
+// ~1800 px/s the ball would tunnel through the 20 px posts (8 of 30 full-power
+// shots did), so it is a bullet: continuous collision stops it at the surface
+const LAUNCH_GAIN = 18;
 const GRAVITY = { x: 0, y: 400 };
 const MAX_BALLS = 4;
 
@@ -79,7 +82,7 @@ export default {
     'The dotted arc is the exact path; the ✕ is where a raycast says it will first hit.',
     'Heavier hits and chain reactions score more.',
   ],
-  features: ['SAT stacking', 'Rotation + friction', 'onCollisionStart', 'contact.impactSpeed', 'raycast', 'createPolygon'],
+  features: ['SAT stacking', 'Rotation + friction', 'onCollisionStart', 'contact.impactSpeed', 'isBullet (CCD)', 'raycast', 'createPolygon'],
   controls: [
     { id: 'reset', label: 'Rebuild towers', kind: 'button' },
     { id: 'slowmo', label: 'Slow motion', kind: 'toggle', checked: false },
@@ -147,6 +150,7 @@ export default {
           radius: 16,
           velocity: launchVelocity(aim),
           material: { density: 3, restitution: 0.3, friction: 0.5 },
+          isBullet: true,
           userData: { kind: 'ball' },
         });
         addBody(world, ball);

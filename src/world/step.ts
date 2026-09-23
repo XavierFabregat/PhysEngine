@@ -3,6 +3,7 @@ import type { ContactPair } from '../types/Contact.js';
 import { updateBodyAABB } from '../bodies/aabb.js';
 import { dispatchCollisionEvents } from './events.js';
 import { measureImpact } from './impact.js';
+import { recordBulletStarts, sweepBullets } from './ccd.js';
 
 /**
  * Advances the physics simulation by one time step.
@@ -17,7 +18,8 @@ import { measureImpact } from './impact.js';
  *    impact speed measured before the resolver changes velocities
  * 4. Solve velocities - impulses for all contacts together, so bodies stop
  *    *before* they move into each other (no creep on slopes, no sinking stacks)
- * 5. Integrate positions - move bodies with the corrected velocities
+ * 5. Integrate positions - move bodies with the corrected velocities; bullets
+ *    (isBullet) whose path crossed a body are pulled back to the first impact
  * 6. Correct positions - push apart any remaining overlap
  * 7. AABB update - bounding boxes match the final positions
  * 8. Time increment
@@ -50,6 +52,8 @@ export const step = (world: World, dt: number): void => {
   }
 
   const { integrator, resolver } = world;
+  // Bullets' positions before they move, for continuous collision detection
+  const bulletStarts = recordBulletStarts(world);
   const splitIntegrator = Boolean(integrator.integrateVelocity && integrator.integratePosition);
 
   // 1. Integrate velocities (or, for legacy integrators, the whole motion)
@@ -91,6 +95,9 @@ export const step = (world: World, dt: number): void => {
   if (splitIntegrator) {
     for (const body of world.bodies) integrator.integratePosition!(body, dt);
   }
+
+  // 5b. Continuous collision: pull bullets back to their first impact
+  if (bulletStarts.size > 0) sweepBullets(world, bulletStarts);
 
   // 6. Position phase: push apart remaining overlap
   if (batchResolver) resolver.correctPositions!(contacts);

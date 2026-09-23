@@ -177,8 +177,8 @@ Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whi
 
 #### Tier 2: the demos were tuned around these
 
-5. **Continuous collision detection** *(moved up from v1.2)* — time-of-impact for opt-in fast bodies (`isBullet` already exists on bodies but does nothing).
-   - *Why:* the slingshot's launch speed is capped at 960 px/s on purpose: faster balls tunnel through 20 px planks.
+5. ✅ **Continuous collision detection** *(moved up from v1.2)* — `isBullet: true` sweeps the body's path each step (ray vs. the target inflated by the bullet's radius; polygon bullets use their inscribed circle) and pulls it back to the first impact (done).
+   - *Why:* the slingshot was capped at 960 px/s; measured, balls start tunneling through its 20 px posts above ~1800 px/s (8 of 30 full-power shots at 2160 px/s). It now fires at up to 2160 px/s as a bullet.
    - *Done when:* a 3000 px/s ball can't pass through a 10 px wall (the tunneling sweep from the audit reports 0/50).
 6. **Chain / edge shapes** *(moved up from v2.1)* — a static polyline shape, `createChain(points)`.
    - *Why:* Ramp Sketch turns each stroke into dozens of overlapping rectangles: bumpy joints and one body per segment.
@@ -321,9 +321,9 @@ Optimizations and quality-of-life improvements.
 Better collision handling for edge cases.
 
 #### Continuous Collision Detection *(moved up: Next #5)*
-- [ ] Time of impact (TOI) calculation
-- [ ] CCD opt-in per body (the existing `body.isBullet` flag)
-- [ ] Tunneling prevention for fast/small objects
+- [x] Time of impact (TOI) calculation (swept circle vs. circle / rounded polygon)
+- [x] CCD opt-in per body (the existing `body.isBullet` flag)
+- [x] Tunneling prevention for fast/small objects
 
 #### Narrow Phase
 - [ ] GJK + EPA algorithm (alternative to SAT)
