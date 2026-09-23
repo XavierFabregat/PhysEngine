@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { createMaterial, DEFAULT_MATERIAL } from './Material';
+import { createMaterial, DEFAULT_MATERIAL, resolveCombineRule } from './Material';
 
 describe('Material', () => {
   describe('DEFAULT_MATERIAL', () => {
     it('should have expected default values', () => {
       expect(DEFAULT_MATERIAL.friction).toBe(0.3);
       expect(DEFAULT_MATERIAL.restitution).toBe(0.2);
-      expect(DEFAULT_MATERIAL.density).toBe(1000);
+      expect(DEFAULT_MATERIAL.density).toBe(1);
     });
 
     it('should be immutable (frozen)', () => {
@@ -19,21 +19,21 @@ describe('Material', () => {
       const material = createMaterial();
       expect(material.friction).toBe(0.3);
       expect(material.restitution).toBe(0.2);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override friction only', () => {
       const material = createMaterial({ friction: 0.8 });
       expect(material.friction).toBe(0.8);
       expect(material.restitution).toBe(0.2);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override restitution only', () => {
       const material = createMaterial({ restitution: 0.9 });
       expect(material.friction).toBe(0.3);
       expect(material.restitution).toBe(0.9);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override density only', () => {
@@ -50,7 +50,7 @@ describe('Material', () => {
       });
       expect(material.friction).toBe(0.7);
       expect(material.restitution).toBe(0.5);
-      expect(material.density).toBe(1000);
+      expect(material.density).toBe(1);
     });
 
     it('should override all properties', () => {
@@ -106,3 +106,22 @@ describe('Material', () => {
   });
 });
 
+describe('resolveCombineRule', () => {
+  it.each([
+    ['min', 0.2],
+    ['max', 0.8],
+    ['average', 0.5],
+    ['multiply', 0.16],
+  ] as const)('should resolve %s', (rule, expected) => {
+    expect(resolveCombineRule(rule)(0.8, 0.2)).toBeCloseTo(expected, 10);
+  });
+
+  it('should return a custom function unchanged', () => {
+    const custom = (a: number, b: number) => a - b;
+    expect(resolveCombineRule(custom)).toBe(custom);
+  });
+
+  it('should throw for an unknown rule name', () => {
+    expect(() => resolveCombineRule('median' as never)).toThrow(/Unknown combine rule/);
+  });
+});

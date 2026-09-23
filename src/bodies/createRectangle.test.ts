@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createRectangle, resetBodyIdCounter } from './createRectangle';
 import { BodyType } from '../types/BodyType';
 import { DEFAULT_MATERIAL } from '../types/Material';
+import { calculatePolygonArea } from './utils';
 
 describe('createRectangle', () => {
   beforeEach(() => {
@@ -523,5 +524,53 @@ describe('createRectangle', () => {
       expect(rect.userData).toEqual({ name: 'platform' });
     });
   });
-});
 
+  describe('input copying', () => {
+    it('should not alias the config position or velocity objects', () => {
+      const position = { x: 1, y: 2 };
+      const velocity = { x: 3, y: 4 };
+      const a = createRectangle({ width: 1, height: 1, position, velocity });
+      const b = createRectangle({ width: 1, height: 1, position, velocity });
+
+      expect(a.position).not.toBe(position);
+      expect(a.velocity).not.toBe(velocity);
+      expect(a.position).not.toBe(b.position);
+
+      a.position.x = 99;
+      expect(position.x).toBe(1);
+      expect(b.position.x).toBe(1);
+    });
+  });
+
+  describe('validation', () => {
+    it.each([0, -10, NaN, Infinity])('should reject width %s', (width) => {
+      expect(() => createRectangle({ width, height: 5 })).toThrow(/width/);
+    });
+
+    it.each([0, -10, NaN, Infinity])('should reject height %s', (height) => {
+      expect(() => createRectangle({ width: 5, height })).toThrow(/height/);
+    });
+
+    it.each([0, -100, NaN])('should reject density %s for dynamic bodies', (density) => {
+      expect(() =>
+        createRectangle({ width: 1, height: 1, material: { density } })
+      ).toThrow(/density/);
+    });
+
+    it('should ignore density for static bodies', () => {
+      expect(() =>
+        createRectangle({ width: 1, height: 1, type: BodyType.STATIC, material: { density: 0 } })
+      ).not.toThrow();
+    });
+  });
+
+  describe('vertex winding', () => {
+    it('should produce positive signed area (top-left first on a y-down screen)', () => {
+      const rect = createRectangle({ width: 4, height: 2 });
+      if (rect.shape.type !== 'rectangle') throw new Error('expected rectangle');
+
+      expect(rect.shape.vertices[0]).toEqual({ x: -2, y: -1 });
+      expect(calculatePolygonArea(rect.shape.vertices)).toBeGreaterThan(0);
+    });
+  });
+});

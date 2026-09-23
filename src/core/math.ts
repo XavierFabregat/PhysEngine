@@ -115,12 +115,18 @@ export const radToDeg = (radians: number): number =>
  * Normalizes an angle to the range [-π, π].
  * Useful for angle comparisons and finding shortest rotation paths.
  * @param angle - The angle in radians
- * @returns The normalized angle in the range [-π, π]
+ * @returns The normalized angle in the range [-π, π], or NaN for non-finite input
  */
 export const normalizeAngle = (angle: number): number => {
-  while (angle > Math.PI) angle -= TWO_PI;
-  while (angle < -Math.PI) angle += TWO_PI;
-  return angle;
+  if (!Number.isFinite(angle)) return NaN;
+  if (angle >= -Math.PI && angle <= Math.PI) return angle;
+
+  // Constant time regardless of magnitude (a subtract loop never terminates
+  // once 2π falls below the float precision of `angle`)
+  let wrapped = angle % TWO_PI;
+  if (wrapped > Math.PI) wrapped -= TWO_PI;
+  else if (wrapped < -Math.PI) wrapped += TWO_PI;
+  return wrapped;
 };
 
 /**

@@ -58,6 +58,16 @@ export interface DebugRenderer {
   drawPoint(position: Vector2, color: string): void;
 
   /**
+   * Draws a text label (optional).
+   * Used for body IDs when `showIds` is enabled; if a renderer doesn't
+   * implement it, labels are skipped.
+   * @param position - Anchor position (label is centered on it)
+   * @param text - The text to draw
+   * @param color - CSS color string
+   */
+  drawText?(position: Vector2, text: string, color: string): void;
+
+  /**
    * Clears the entire rendering surface.
    * Called before each frame when using debugDraw in an animation loop.
    */
@@ -81,7 +91,7 @@ export interface DebugDrawOptions {
   /** Draw center of mass markers (default: false) */
   showCenterOfMass?: boolean;
 
-  /** Draw body IDs as text (default: false) */
+  /** Draw body IDs as text (default: false; requires renderer.drawText) */
   showIds?: boolean;
 }
 

@@ -19,13 +19,15 @@ export interface Material {
   restitution: number;
 
   /**
-   * Material density in kg/m².
-   * Used to calculate mass from shape area.
-   * Typical values:
-   * - Wood: ~500
-   * - Plastic: ~900
-   * - Rock: ~2000
-   * - Metal: ~7000
+   * Mass per unit area, in world units (pixels² by default).
+   * Used to calculate mass from shape area: mass = area × density.
+   * Only ratios between bodies matter for collisions, so pick a relative scale.
+   * Suggested relative values (default = 1):
+   * - Light (foam, wood): 0.3-0.7
+   * - Medium (plastic, water): ~1
+   * - Heavy (rock): ~2.5
+   * - Very heavy (metal): ~8
+   * Must be > 0 for dynamic bodies.
    */
   density: number;
 }
@@ -36,7 +38,7 @@ export interface Material {
 export const DEFAULT_MATERIAL: Readonly<Material> = Object.freeze({
   friction: 0.3,
   restitution: 0.2,
-  density: 1000,
+  density: 1,
 });
 
 /**
@@ -51,3 +53,43 @@ export const createMaterial = (partial: Partial<Material> = {}): Material => ({
   density: partial.density ?? DEFAULT_MATERIAL.density,
 });
 
+/**
+ * How two bodies' material values (e.g. restitution) combine into the single
+ * value used for their collision.
+ * - 'min': the lower value wins (a dead surface stops any bounce)
+ * - 'max': the higher value wins (a bouncy ball bounces on any surface;
+ *   Box2D and Matter.js use this for restitution)
+ * - 'average': arithmetic mean
+ * - 'multiply': product (both must be high for a high result)
+ * - custom function: receives both values, returns the combined one
+ */
+export type CombineRule =
+  | 'min'
+  | 'max'
+  | 'average'
+  | 'multiply'
+  | ((a: number, b: number) => number);
+
+const COMBINE_FUNCTIONS = {
+  min: Math.min,
+  max: Math.max,
+  average: (a: number, b: number) => (a + b) * 0.5,
+  multiply: (a: number, b: number) => a * b,
+} as const;
+
+/**
+ * Resolves a CombineRule to a function of two values.
+ * @param rule - Named rule or custom function
+ * @returns Function combining two material values
+ * @throws Error for an unknown rule name (e.g. a typo from JavaScript callers)
+ */
+export const resolveCombineRule = (rule: CombineRule): ((a: number, b: number) => number) => {
+  if (typeof rule === 'function') return rule;
+  const combine = COMBINE_FUNCTIONS[rule];
+  if (!combine) {
+    throw new Error(
+      `Unknown combine rule "${String(rule)}" (expected 'min', 'max', 'average', 'multiply' or a function)`
+    );
+  }
+  return combine;
+};

@@ -7,11 +7,16 @@ import type { Body } from '../types/Body.js';
  * 
  * @param world - The physics world
  * @param body - The body to add
+ * @throws Error if a body with the same ID is already in the world
+ *   (adding it twice would integrate it twice per step)
  * @example
  * const ball = createCircle({ radius: 20 });
  * addBody(world, ball);
  */
 export const addBody = (world: World, body: Body): void => {
+  if (hasBody(world, body.id)) {
+    throw new Error(`addBody: a body with id "${body.id}" is already in the world`);
+  }
   world.bodies.push(body);
 };
 

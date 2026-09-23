@@ -11,6 +11,8 @@ export interface CircleShape {
 
 /**
  * Rectangle shape (axis-aligned in local space).
+ * Vertices have positive winding (signed area > 0): top-left, top-right,
+ * bottom-right, bottom-left on a y-down screen.
  */
 export interface RectangleShape {
   type: 'rectangle';
@@ -27,7 +29,11 @@ export interface RectangleShape {
  */
 export interface PolygonShape {
   type: 'polygon';
-  /** Vertices in local space (must be convex and counter-clockwise) */
+  /**
+   * Vertices in local space, relative to the center of mass.
+   * Must be convex with positive winding (signed area > 0): counter-clockwise
+   * in y-up math axes, which appears clockwise on a y-down screen.
+   */
   vertices: readonly Vector2[];
 }
 

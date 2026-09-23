@@ -23,7 +23,8 @@ open examples/debug-viewer.html
 
 **Features:**
 - Visualize bodies (circles, rectangles)
-- Toggle AABBs, velocities, center of mass
+- Toggle AABBs, velocities, center of mass, body IDs
+- Play/pause the simulation (Space), drag and rotate bodies
 - Color-coded by body type (static/dynamic/kinematic)
 - Interactive controls
 

@@ -10,7 +10,9 @@ import type { DebugRenderer } from '../DebugRenderer.js';
  * Renders physics bodies using the HTML5 Canvas 2D API.
  * 
  * NOTE: This file is meant for browser environments only.
- * It uses DOM types (HTMLCanvasElement, CanvasRenderingContext2D).
+ * It uses DOM types (HTMLCanvasElement, CanvasRenderingContext2D), so it is
+ * not part of the main entry point. Import it from the subpath:
+ * `import { CanvasRenderer } from '@xavifabregat/physengine/canvas';`
  * 
  * @example
  * const canvas = document.getElementById('myCanvas') as HTMLCanvasElement;
@@ -115,6 +117,17 @@ export class CanvasRenderer implements DebugRenderer {
   drawPoint(position: Vector2, color: string): void {
     this.ctx.fillStyle = color;
     this.ctx.fillRect(position.x - 3, position.y - 3, 6, 6);
+  }
+
+  /**
+   * Draws a text label centered on a position.
+   */
+  drawText(position: Vector2, text: string, color: string): void {
+    this.ctx.fillStyle = color;
+    this.ctx.font = '10px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(text, position.x, position.y);
   }
 }
 

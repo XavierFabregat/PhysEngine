@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from './createWorld';
-import { VerletIntegrator } from '../systems/integrators/Verlet';
+import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicitEuler';
+import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce';
+import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
+import { ShapeDispatchNarrowPhase } from '../systems/narrowphase/ShapeDispatchNarrowPhase';
 
 describe('createWorld', () => {
   describe('basic creation', () => {
@@ -28,6 +31,16 @@ describe('createWorld', () => {
   });
 
   describe('custom gravity', () => {
+    it('should copy custom gravity instead of aliasing it', () => {
+      const gravity = { x: 0, y: 9.81 };
+      const world = createWorld({ gravity });
+
+      gravity.y = 0;
+
+      expect(world.gravity).not.toBe(gravity);
+      expect(world.gravity.y).toBe(9.81);
+    });
+
     it('should accept custom gravity', () => {
       const world = createWorld({
         gravity: { x: 0, y: 9.81 },
@@ -118,17 +131,79 @@ describe('createWorld', () => {
   });
 
   describe('integrator configuration', () => {
-    it('should use default Verlet integrator', () => {
+    it('should use default semi-implicit Euler integrator', () => {
       const world = createWorld();
       
-      expect(world.integrator).toBeInstanceOf(VerletIntegrator);
+      expect(world.integrator).toBeInstanceOf(SemiImplicitEulerIntegrator);
     });
 
     it('should accept custom integrator', () => {
-      const customIntegrator = new VerletIntegrator();
+      const customIntegrator = new SemiImplicitEulerIntegrator();
       const world = createWorld({ integrator: customIntegrator });
       
       expect(world.integrator).toBe(customIntegrator);
+    });
+
+    it('should not share default integrator between worlds', () => {
+      const world1 = createWorld();
+      const world2 = createWorld();
+      
+      expect(world1.integrator).not.toBe(world2.integrator);
+    });
+  });
+
+  describe('collision system configuration', () => {
+    it('should use default BruteForce broad phase', () => {
+      const world = createWorld();
+      
+      expect(world.broadPhase).toBeInstanceOf(BruteForceBroadPhase);
+    });
+
+    it('should use default shape-dispatch narrow phase', () => {
+      expect(createWorld().narrowPhase).toBeInstanceOf(ShapeDispatchNarrowPhase);
+    });
+
+    it('should accept custom narrow phase', () => {
+      const custom = new ShapeDispatchNarrowPhase();
+      expect(createWorld({ narrowPhase: custom }).narrowPhase).toBe(custom);
+    });
+
+    it('should not share default narrow phase between worlds', () => {
+      expect(createWorld().narrowPhase).not.toBe(createWorld().narrowPhase);
+    });
+
+    it('should use default Impulse resolver', () => {
+      const world = createWorld();
+      
+      expect(world.resolver).toBeInstanceOf(ImpulseResolver);
+    });
+
+    it('should accept custom broad phase', () => {
+      const customBroadPhase = new BruteForceBroadPhase();
+      const world = createWorld({ broadPhase: customBroadPhase });
+      
+      expect(world.broadPhase).toBe(customBroadPhase);
+    });
+
+    it('should accept custom resolver', () => {
+      const customResolver = new ImpulseResolver();
+      const world = createWorld({ resolver: customResolver });
+      
+      expect(world.resolver).toBe(customResolver);
+    });
+
+    it('should not share default broad phase between worlds', () => {
+      const world1 = createWorld();
+      const world2 = createWorld();
+      
+      expect(world1.broadPhase).not.toBe(world2.broadPhase);
+    });
+
+    it('should not share default resolver between worlds', () => {
+      const world1 = createWorld();
+      const world2 = createWorld();
+      
+      expect(world1.resolver).not.toBe(world2.resolver);
     });
   });
 });

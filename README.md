@@ -8,9 +8,17 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 
 ## Status: In Development 🚧
 
-**Current Version:** 0.1.0  
-**Core Math Layer:** ✅ Complete (293 tests passing)  
-**Physics Simulation:** ⏳ Coming soon
+**Current Version:** 0.2.0  
+**Core Math Layer:** ✅ Complete  
+**Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
+**Collision Detection & Response:** 🚧 All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase, impulse bounce. No friction or rotational response yet, so tilted boxes stay balanced on a corner
+
+## Conventions
+
+- **Coordinates:** y-down screen space (+x right, +y down), matching Canvas/DOM. `Vector2.UP` is `{ x: 0, y: -1 }`.
+- **Rotation:** radians; positive rotates +x toward +y, which is **clockwise on screen**.
+- **Winding:** polygon/rectangle vertices have positive signed area (counter-clockwise in y-up math axes, clockwise as seen on screen).
+- **Units:** arbitrary world units, pixels by default. Default gravity is `{ x: 0, y: 400 }` units/s², default density is `1` mass per unit area.
 
 ## Features (So Far)
 
@@ -39,6 +47,20 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
   - Interpolation: lerp, smoothstep
   - Angle operations: deg/rad conversion, normalization
   - Random utilities
+
+### ✅ Bodies & World
+
+- **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
+- **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
+- **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (restitution with a configurable combine rule + positional correction; sensors detect without responding)
+- **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
+- **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
+
+### ✅ Debug Rendering
+
+- `debugDraw(world, renderer, options)` against a library-agnostic `DebugRenderer` interface (bodies, AABBs, velocities, center of mass, IDs)
+- `CanvasRenderer` reference implementation at the `@xavifabregat/physengine/canvas` entry point (browser only)
 
 ## Examples
 
@@ -96,6 +118,64 @@ if (AABB.overlaps(box1, box2)) {
 // Math utilities
 const interpolated = math.lerp(0, 100, 0.5); // 50
 const angle = math.degToRad(90); // π/2
+```
+
+### Simulating bodies
+
+```typescript
+import { createWorld, createCircle, createRectangle, addBody, step, BodyType } from '@xavifabregat/physengine';
+
+const world = createWorld(); // gravity { x: 0, y: 400 }, y-down
+
+addBody(world, createRectangle({
+  position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC,
+}));
+const ball = createCircle({ position: { x: 400, y: 100 }, radius: 20 });
+addBody(world, ball);
+
+function update() {
+  step(world, 1 / 60);
+  console.log(ball.position); // falls, then comes to rest on the floor
+  requestAnimationFrame(update);
+}
+```
+
+### Polygons
+
+```typescript
+import { createPolygon, BodyType } from '@xavifabregat/physengine';
+
+// Vertices are relative to `position`; the body is re-centered on the centroid
+const wedge = createPolygon({
+  position: { x: 690, y: 560 },
+  vertices: [{ x: -70, y: 0 }, { x: 70, y: 0 }, { x: 70, y: -60 }],
+  type: BodyType.STATIC,
+});
+```
+
+Convex outlines only (concave or self-intersecting ones throw); either winding is accepted.
+
+### Choosing how bounciness combines
+
+When two bodies collide, their restitution values are combined into one. The default rule is `'min'` (the less bouncy body wins, so floors need a high restitution for balls to bounce). Use `'max'` for the common game-engine behaviour where a bouncy ball bounces on any surface:
+
+```typescript
+import { createWorld, ImpulseResolver } from '@xavifabregat/physengine';
+
+const world = createWorld({
+  resolver: new ImpulseResolver({ restitutionCombine: 'max' }),
+  // also: 'min' (default) | 'average' | 'multiply' | ((a, b) => number)
+});
+```
+
+### Debug rendering in the browser
+
+```typescript
+import { debugDraw } from '@xavifabregat/physengine';
+import { CanvasRenderer } from '@xavifabregat/physengine/canvas';
+
+const renderer = new CanvasRenderer(document.querySelector<HTMLCanvasElement>('canvas')!);
+debugDraw(world, renderer, { showAABBs: true, showIds: true });
 ```
 
 ## Development
@@ -183,12 +263,19 @@ The workflow automatically:
 ```
 PhysEngine/
 ├── src/
-│   └── core/              # Core math primitives
-│       ├── Vector2.ts     # 2D vector operations
-│       ├── Transform.ts   # Coordinate transforms
-│       ├── AABB.ts        # Bounding boxes
-│       └── math.ts        # Utility functions
-├── examples/              # Interactive demos
+│   ├── core/              # Math primitives (Vector2, Transform, AABB, math)
+│   ├── types/             # Body, Shape, Material, World, Integrator
+│   ├── bodies/            # Body factories, mass/inertia, AABB helpers
+│   ├── world/             # createWorld, body management, step
+│   ├── systems/
+│   │   ├── integrators/   # SemiImplicitEuler (default)
+│   │   ├── broadphase/    # BruteForce
+│   │   ├── narrowphase/   # circle/rectangle/polygon detectors, SAT, ShapeDispatch
+│   │   └── resolvers/     # ImpulseResolver
+│   ├── debug/             # DebugRenderer interface, debugDraw, CanvasRenderer
+│   ├── index.ts           # Main (headless) entry point
+│   └── canvas.ts          # Browser-only entry point (CanvasRenderer)
+├── examples/              # Terminal demos + browser debug viewer
 ├── dist/                  # Built library (npm package)
 └── IMPLEMENTATION.md      # Full roadmap
 ```
@@ -198,10 +285,9 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Bodies & Shapes** - Circle, polygon, rectangle
-- **World Management** - Add/remove bodies, queries
-- **Integration** - Verlet integrator, simulation loop
-- **Collision Detection** - Spatial hash (broad) + SAT (narrow)
+- **Collision Response** - Friction and rotational (angular) impulses (the 2-point manifold is already produced)
+- **Solver stability** - Iterative contact solving: stacks currently compress a few px per level, and very large mass ratios (≈1000:1) let a heavy body crush a light one
+- **Broad phase** - Spatial hash once body counts demand it
 - **Constraints** - Springs, rods, pins
 - **Events** - Collision callbacks
 
@@ -214,14 +300,11 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ## Testing
 
-**293 tests** covering all core math operations:
-- ✅ 84 tests - Vector2
-- ✅ 87 tests - math utilities
-- ✅ 49 tests - Transform
-- ✅ 73 tests - AABB
+Unit tests cover the math layer, body factories, mass/inertia helpers, world management, the integrator, and `debugDraw`.
 
 ```bash
 pnpm test:run
+pnpm test:coverage
 ```
 
 ## License
@@ -247,5 +330,5 @@ For detailed instructions on the git workflow, GitHub CLI commands, and release 
 
 ---
 
-**Progress:** 47% of v1.0 foundation complete | [View full implementation plan →](./IMPLEMENTATION.md)
+[View full implementation plan →](./IMPLEMENTATION.md)
 

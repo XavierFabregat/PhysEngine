@@ -29,6 +29,10 @@ export type { Material } from './types/Material.js';
 export type { Shape, CircleShape, RectangleShape, PolygonShape } from './types/Shape.js';
 export type { World } from './types/World.js';
 export type { Integrator } from './types/Integrator.js';
+export type { BroadPhase, BodyPair } from './types/BroadPhase.js';
+export type { NarrowPhase } from './types/NarrowPhase.js';
+export type { CollisionResolver } from './types/CollisionResolver.js';
+export type { Contact, ContactPair } from './types/Contact.js';
 
 // Body type constants (exported as value)
 export { BodyType } from './types/BodyType.js';
@@ -42,6 +46,11 @@ export type { CircleConfig } from './bodies/createCircle.js';
 
 export { createRectangle } from './bodies/createRectangle.js';
 export type { RectangleConfig } from './bodies/createRectangle.js';
+
+export { createPolygon } from './bodies/createPolygon.js';
+export type { PolygonConfig } from './bodies/createPolygon.js';
+
+export { computeShapeAABB, updateBodyAABB } from './bodies/aabb.js';
 
 // ============================================================
 // WORLD
@@ -66,7 +75,30 @@ export { step } from './world/step.js';
 // INTEGRATORS
 // ============================================================
 
-export { VerletIntegrator } from './systems/integrators/Verlet.js';
+export {
+  SemiImplicitEulerIntegrator,
+  /** @deprecated Use SemiImplicitEulerIntegrator (it was never Verlet). */
+  VerletIntegrator,
+} from './systems/integrators/SemiImplicitEuler.js';
+
+// ============================================================
+// COLLISION DETECTION & RESPONSE
+// ============================================================
+
+// Broad phase
+export { BruteForceBroadPhase } from './systems/broadphase/BruteForce.js';
+
+// Narrow phase
+export { detectCircleCircle } from './systems/narrowphase/circleCircle.js';
+export { detectCircleRectangle } from './systems/narrowphase/circleRectangle.js';
+export { detectCirclePolygon } from './systems/narrowphase/circlePolygon.js';
+export { detectPolygonPolygon } from './systems/narrowphase/polygonPolygon.js';
+export { ShapeDispatchNarrowPhase } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
+export type { ShapeDetector } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
+
+// Resolvers
+export { ImpulseResolver } from './systems/resolvers/ImpulseResolver.js';
+export type { ImpulseResolverOptions } from './systems/resolvers/ImpulseResolver.js';
 
 // ============================================================
 // DEBUG RENDERER
@@ -75,15 +107,17 @@ export { VerletIntegrator } from './systems/integrators/Verlet.js';
 export type { DebugRenderer, DebugDrawOptions } from './debug/DebugRenderer.js';
 export { debugDraw } from './debug/debugDraw.js';
 
-// Example implementations (reference - users should copy/customize)
-export { CanvasRenderer } from './debug/examples/CanvasRenderer.js';
+// The Canvas reference renderer depends on DOM types, so it lives at a
+// separate entry point to keep this one headless:
+//   import { CanvasRenderer } from '@xavifabregat/physengine/canvas';
 
 // ============================================================
 // UTILITIES
 // ============================================================
 
 // Material utilities
-export { createMaterial, DEFAULT_MATERIAL } from './types/Material.js';
+export { createMaterial, DEFAULT_MATERIAL, resolveCombineRule } from './types/Material.js';
+export type { CombineRule } from './types/Material.js';
 
 // Shape type guards
 export { isCircle, isRectangle, isPolygon } from './types/Shape.js';

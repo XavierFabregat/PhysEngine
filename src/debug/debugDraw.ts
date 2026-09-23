@@ -24,6 +24,7 @@ const COLORS = {
   AABB: '#00ff00',        // Green for AABBs
   VELOCITY: '#ff0000',    // Red for velocity vectors
   CENTER_OF_MASS: '#ff00ff', // Magenta for center of mass
+  ID: '#ffffff',          // White for body ID labels
 };
 
 /**
@@ -132,6 +133,11 @@ export const debugDraw = (
     // Draw center of mass
     if (opts.showCenterOfMass) {
       renderer.drawPoint(body.position, COLORS.CENTER_OF_MASS);
+    }
+
+    // Draw body ID label (skipped if the renderer can't draw text)
+    if (opts.showIds && renderer.drawText) {
+      renderer.drawText(body.position, body.id, COLORS.ID);
     }
   }
 };

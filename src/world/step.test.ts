@@ -4,7 +4,9 @@ import { step } from './step';
 import { addBody } from './body';
 import { createCircle, resetBodyIdCounter } from '../bodies/createCircle';
 import { createRectangle } from '../bodies/createRectangle';
+import { createPolygon } from '../bodies/createPolygon';
 import { BodyType } from '../types/BodyType';
+import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
 
 describe('step', () => {
   beforeEach(() => {
@@ -32,6 +34,24 @@ describe('step', () => {
       step(world, 0.02);
       
       expect(world.time).toBeCloseTo(0.17, 10);
+    });
+
+    it('should reject NaN, infinite or negative dt', () => {
+      const world = createWorld();
+      const body = createCircle({ radius: 10 });
+      addBody(world, body);
+
+      for (const dt of [NaN, Infinity, -1 / 60]) {
+        expect(() => step(world, dt)).toThrow(RangeError);
+      }
+      expect(body.position).toEqual({ x: 0, y: 0 });
+      expect(world.time).toBe(0);
+    });
+
+    it('should accept dt = 0', () => {
+      const world = createWorld();
+      step(world, 0);
+      expect(world.time).toBe(0);
     });
 
     it('should do nothing for empty world', () => {
@@ -324,6 +344,553 @@ describe('step', () => {
       
       // Should have moved both horizontally and vertically
       expect(projectile.position.x).toBeGreaterThan(0);
+    });
+  });
+
+  describe('collision detection and response', () => {
+    describe('rectangles and polygons (SAT)', () => {
+      const floor = () =>
+        createRectangle({ position: { x: 400, y: 580 }, width: 800, height: 40, type: BodyType.STATIC });
+      const run = (world: ReturnType<typeof createWorld>, seconds: number) => {
+        for (let i = 0; i < seconds * 60; i++) step(world, 1 / 60);
+      };
+
+      it('should land a box flat on the floor', () => {
+        const world = createWorld();
+        const crate = createRectangle({ position: { x: 400, y: 100 }, width: 40, height: 40, material: { restitution: 0 } });
+        addBody(world, floor());
+        addBody(world, crate);
+
+        run(world, 4);
+
+        expect(crate.position.y).toBeGreaterThan(540 - 0.5);
+        expect(crate.position.y).toBeLessThan(540 + 1);
+        expect(Math.abs(crate.velocity.y)).toBeLessThan(1);
+      });
+
+      it('should land a triangle on its base', () => {
+        const world = createWorld();
+        const wedge = createPolygon({
+          position: { x: 400, y: 100 },
+          vertices: [{ x: -30, y: 20 }, { x: 30, y: 20 }, { x: 0, y: -30 }],
+          material: { restitution: 0 },
+        });
+        addBody(world, floor());
+        addBody(world, wedge);
+
+        run(world, 4);
+
+        if (wedge.shape.type !== 'polygon') throw new Error('expected polygon');
+        const base = Math.max(...wedge.shape.vertices.map((v) => v.y + wedge.position.y));
+        expect(base).toBeGreaterThan(560 - 0.5);
+        expect(base).toBeLessThan(560 + 1);
+      });
+
+      it('should keep a stack of boxes ordered and upright (bounded sinking)', () => {
+        const world = createWorld();
+        addBody(world, floor());
+        const boxes = [0, 1, 2, 3, 4].map((i) =>
+          createRectangle({ position: { x: 400, y: 540 - i * 40 }, width: 40, height: 40, material: { restitution: 0 } })
+        );
+        boxes.forEach((b) => addBody(world, b));
+
+        run(world, 6);
+
+        boxes.forEach((b, i) => {
+          expect(b.position.x).toBeCloseTo(400, 6);
+          // The single-pass linear resolver lets stacks compress a few px per
+          // level; this bound guards against it getting worse
+          // (measured: 5.7, 11.5, 15.7, 18.2, 18.8 px)
+          expect(Math.abs(b.position.y - (540 - i * 40))).toBeLessThan(7 + i * 5);
+          if (i > 0) expect(b.position.y).toBeLessThan(boxes[i - 1]!.position.y - 30);
+        });
+      });
+
+      it('should slide a ball down a static triangular ramp onto the floor', () => {
+        const world = createWorld();
+        addBody(world, floor());
+        addBody(world, createPolygon({
+          position: { x: 300, y: 560 },
+          vertices: [{ x: -200, y: 0 }, { x: 200, y: 0 }, { x: -200, y: -200 }],
+          type: BodyType.STATIC,
+        }));
+        const ball = createCircle({ position: { x: 140, y: 330 }, radius: 10, material: { restitution: 0 } });
+        addBody(world, ball);
+
+        run(world, 3);
+
+        expect(ball.position.x).toBeGreaterThan(500); // past the foot of the ramp
+        expect(ball.position.y).toBeGreaterThan(549); // resting height on the floor
+        expect(ball.position.y).toBeLessThan(552);
+      });
+    });
+
+    it('should land a falling ball on a static rectangle floor', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const floor = createRectangle({
+        position: { x: 400, y: 580 },
+        width: 800,
+        height: 40,
+        type: BodyType.STATIC,
+      });
+      const ball = createCircle({
+        position: { x: 400, y: 100 },
+        radius: 20,
+        material: { restitution: 0 },
+      });
+      addBody(world, floor);
+      addBody(world, ball);
+
+      for (let i = 0; i < 240; i++) step(world, 1 / 60);
+
+      // Floor top at y = 560: the ball rests on it (small penetration allowed)
+      expect(ball.position.y).toBeGreaterThan(560 - 20 - 0.5);
+      expect(ball.position.y).toBeLessThan(560 - 20 + 2);
+      expect(Math.abs(ball.velocity.y)).toBeLessThan(10);
+    });
+
+    it('should lose bounce height by about e² per floor bounce, never gain it', () => {
+      const apexRatios = (restitution: number) => {
+        const world = createWorld({ gravity: { x: 0, y: 400 } });
+        addBody(world, createRectangle({
+          position: { x: 0, y: 580 },
+          width: 800,
+          height: 40,
+          type: BodyType.STATIC,
+          material: { restitution: 1 },
+        }));
+        const ball = createCircle({ position: { x: 0, y: 100 }, radius: 20, material: { restitution } });
+        addBody(world, ball);
+
+        const heights = [540 - 100];
+        let previousVy = 0;
+        for (let i = 0; i < 60 * 20 && heights.length < 4; i++) {
+          step(world, 1 / 60);
+          if (previousVy < 0 && ball.velocity.y >= 0) heights.push(540 - ball.position.y);
+          previousVy = ball.velocity.y;
+        }
+        return heights.slice(1).map((h, i) => h / heights[i]!);
+      };
+
+      for (const ratio of apexRatios(1)) {
+        expect(ratio).toBeLessThanOrEqual(1);
+        expect(ratio).toBeGreaterThan(0.95);
+      }
+      for (const ratio of apexRatios(0.8)) {
+        expect(ratio).toBeGreaterThan(0.58);
+        expect(ratio).toBeLessThan(0.66); // e² = 0.64
+      }
+    });
+
+    it('should honour the resolver restitution rule set through createWorld', () => {
+      const firstBounceHeight = (restitutionCombine: 'min' | 'max') => {
+        const world = createWorld({
+          gravity: { x: 0, y: 400 },
+          resolver: new ImpulseResolver({ restitutionCombine }),
+        });
+        // Default floor material: restitution 0.2
+        addBody(world, createRectangle({ position: { x: 0, y: 580 }, width: 800, height: 40, type: BodyType.STATIC }));
+        const ball = createCircle({ position: { x: 0, y: 100 }, radius: 20, material: { restitution: 1 } });
+        addBody(world, ball);
+
+        let previousVy = 0;
+        for (let i = 0; i < 600; i++) {
+          step(world, 1 / 60);
+          if (previousVy < 0 && ball.velocity.y >= 0) return 540 - ball.position.y;
+          previousVy = ball.velocity.y;
+        }
+        return 0;
+      };
+
+      // Dropped from 440 px above the resting height
+      expect(firstBounceHeight('min')).toBeLessThan(440 * 0.2 ** 2 * 1.1); // e = 0.2
+      expect(firstBounceHeight('max')).toBeGreaterThan(440 * 0.95); // e = 1
+    });
+
+    it('should bounce off a rectangle with the lower restitution of the pair', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      const wall = createRectangle({
+        position: { x: 100, y: 0 },
+        width: 20,
+        height: 200,
+        type: BodyType.STATIC,
+        material: { restitution: 0.5 },
+      });
+      const ball = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 120, y: 0 },
+        material: { restitution: 0.9 },
+      });
+      addBody(world, wall);
+      addBody(world, ball);
+
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      expect(ball.velocity.x).toBeCloseTo(-60, 5);
+      expect(ball.position.x).toBeLessThan(80);
+    });
+
+    it('should slide a ball down a frictionless rotated ramp', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const angle = Math.PI / 6; // right side lower on a y-down screen
+      const ramp = createRectangle({
+        position: { x: 0, y: 0 },
+        width: 400,
+        height: 20,
+        rotation: angle,
+        type: BodyType.STATIC,
+      });
+      // Start resting on the ramp's upper surface, left of centre
+      const up = { x: Math.sin(angle), y: -Math.cos(angle) };
+      const along = { x: Math.cos(angle), y: Math.sin(angle) };
+      const start = { x: -100 * along.x + 20 * up.x, y: -100 * along.y + 20 * up.y };
+      const ball = createCircle({ position: start, radius: 10, material: { restitution: 0 } });
+      addBody(world, ramp);
+      addBody(world, ball);
+
+      for (let i = 0; i < 30; i++) step(world, 1 / 60);
+
+      const travelled = (ball.position.x - start.x) * along.x + (ball.position.y - start.y) * along.y;
+      const heightAboveSurface = (ball.position.x) * up.x + (ball.position.y) * up.y;
+      // No friction: acceleration along the slope is g·sin(30°) = 200 → ~25 px in 0.5 s
+      expect(travelled).toBeGreaterThan(20);
+      expect(travelled).toBeLessThan(35);
+      // Still on the surface (radius 10 + half thickness 10)
+      expect(heightAboveSurface).toBeGreaterThan(19);
+      expect(heightAboveSurface).toBeLessThan(21);
+    });
+
+    it('should let a kinematic rectangle platform lift a resting ball', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const platform = createRectangle({
+        position: { x: 0, y: 200 },
+        width: 200,
+        height: 20,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 0, y: -50 },
+      });
+      const ball = createCircle({ position: { x: 0, y: 180 }, radius: 10, material: { restitution: 0 } });
+      addBody(world, platform);
+      addBody(world, ball);
+
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      // Platform top rose from 190 to 140; ball rides on it
+      expect(platform.position.y).toBeCloseTo(150, 5);
+      expect(ball.position.y).toBeGreaterThan(130 - 1);
+      expect(ball.position.y).toBeLessThan(130 + 2);
+    });
+
+    it('should use a custom narrow phase from the world config', () => {
+      const calls: string[] = [];
+      const world = createWorld({
+        gravity: { x: 0, y: 0 },
+        narrowPhase: {
+          detect: (a, b) => {
+            calls.push(`${a.id}|${b.id}`);
+            return null;
+          },
+        },
+      });
+      const a = createCircle({ radius: 10 });
+      const b = createCircle({ position: { x: 5, y: 0 }, radius: 10 });
+      addBody(world, a);
+      addBody(world, b);
+
+      step(world, 1 / 60);
+
+      expect(calls).toEqual([`${a.id}|${b.id}`]);
+    });
+
+    it('should keep kinematic, static and later dynamic bodies finite after a kinematic touches a static peg', () => {
+      // Regression: kinematic-vs-static contacts produced 0/0 impulses, turning
+      // both velocities into NaN; the poisoned peg then NaN'd any ball landing on it.
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const peg = createCircle({ position: { x: 0, y: 100 }, radius: 10, type: BodyType.STATIC });
+      const sweeper = createCircle({
+        position: { x: -30, y: 100 },
+        radius: 5,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 60, y: 0 },
+      });
+      addBody(world, peg);
+      addBody(world, sweeper);
+
+      for (let i = 0; i < 30; i++) step(world, 1 / 60);
+
+      expect(peg.velocity).toEqual({ x: 0, y: 0 });
+      expect(sweeper.velocity).toEqual({ x: 60, y: 0 });
+      expect(sweeper.position.x).toBeCloseTo(0, 10); // passes through the peg unaffected
+
+      const ball = createCircle({ position: { x: 0, y: 40 }, radius: 8 });
+      addBody(world, ball);
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      expect(Number.isFinite(ball.position.x)).toBe(true);
+      expect(Number.isFinite(ball.position.y)).toBe(true);
+      expect(ball.position.y).toBeLessThan(100); // resting on top of the peg, not NaN or through it
+    });
+
+    it('should call broad phase and execute collision loop', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Create stationary overlapping circles
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 15,
+        velocity: { x: 0, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 20, y: 0 },  // Distance 20, sum of radii 30 - overlapping
+        radius: 15,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      // Verify world has the collision systems
+      expect(world.broadPhase).toBeDefined();
+      expect(world.resolver).toBeDefined();
+      
+      const posBeforeA = ballA.position.x;
+      const posBeforeB = ballB.position.x;
+      
+      step(world, 1/60);
+      
+      // Collision should be detected and resolved - bodies pushed apart
+      expect(ballA.position.x).toBeLessThan(posBeforeA);
+      expect(ballB.position.x).toBeGreaterThan(posBeforeB);
+    });
+
+    it('should execute collision detection loop', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Explicitly overlapping circles to ensure broad phase detects them
+      const ballA = createCircle({
+        position: { x: 100, y: 100 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 115, y: 100 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      // Verify they're overlapping before step
+      const distBefore = Math.abs(ballB.position.x - ballA.position.x);
+      expect(distBefore).toBe(15);  // Less than sum of radii (20)
+      
+      step(world, 1/60);
+      
+      // After step, they should be pushed apart
+      const distAfter = Math.abs(ballB.position.x - ballA.position.x);
+      expect(distAfter).toBeGreaterThan(distBefore);
+    });
+
+    it('should detect and resolve circle-circle collisions', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 10, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      step(world, 1/60);
+      
+      // Velocities should change after collision
+      expect(ballA.velocity.x).not.toBe(10);
+      expect(ballB.velocity.x).not.toBe(-10);
+    });
+
+    it('should separate overlapping bodies', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ballB = createCircle({
+        position: { x: 15, y: 0 },  // Overlapping (should be 20 apart)
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      const origDistance = Math.abs(ballB.position.x - ballA.position.x);
+      
+      step(world, 1/60);
+      
+      const newDistance = Math.abs(ballB.position.x - ballA.position.x);
+      
+      // Bodies should be pushed apart
+      expect(newDistance).toBeGreaterThan(origDistance);
+    });
+
+    it('should handle multiple collisions in one step', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Three balls in a row, all overlapping
+      const ball1 = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ball2 = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      const ball3 = createCircle({
+        position: { x: 30, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 }
+      });
+      
+      addBody(world, ball1);
+      addBody(world, ball2);
+      addBody(world, ball3);
+      
+      // Should not crash with multiple collisions
+      expect(() => step(world, 1/60)).not.toThrow();
+      
+      // All should be moved apart
+      const dist12 = Math.abs(ball2.position.x - ball1.position.x);
+      const dist23 = Math.abs(ball3.position.x - ball2.position.x);
+      
+      expect(dist12).toBeGreaterThan(15);
+      expect(dist23).toBeGreaterThan(15);
+    });
+
+    it('should bounce ball off static wall', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const ball = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 100, y: 0 },
+        material: { restitution: 1.0 }
+      });
+      const wall = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        type: BodyType.STATIC
+      });
+      
+      addBody(world, ball);
+      addBody(world, wall);
+      
+      step(world, 1/60);
+      
+      // Ball should bounce back (velocity reverses)
+      expect(ball.velocity.x).toBeLessThan(0);
+      
+      // Wall shouldn't move
+      expect(wall.position.x).toBe(15);
+      expect(wall.velocity.x).toBe(0);
+    });
+
+    it('should not collide bodies on different layers', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const LAYER_A = 1 << 0;
+      const LAYER_B = 1 << 1;
+      
+      const ballA = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 10, y: 0 },
+        layer: LAYER_A,
+        collidesWith: LAYER_A
+      });
+      const ballB = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 },
+        layer: LAYER_B,
+        collidesWith: LAYER_B
+      });
+      
+      addBody(world, ballA);
+      addBody(world, ballB);
+      
+      step(world, 1/60);
+      
+      // Velocities shouldn't change (different layers)
+      expect(ballA.velocity.x).toBeCloseTo(10, 5);
+      expect(ballB.velocity.x).toBeCloseTo(-10, 5);
+    });
+
+    it('should handle sensors without physical response', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      const sensor = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 0, y: 0 },
+        isSensor: true
+      });
+      const ball = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        velocity: { x: -10, y: 0 }
+      });
+      
+      addBody(world, sensor);
+      addBody(world, ball);
+      
+      const origVel = { ...ball.velocity };
+      
+      step(world, 1/60);
+      
+      // Sensor detected but no physical response
+      // Ball velocity should continue mostly unchanged
+      expect(ball.velocity.x).toBeCloseTo(origVel.x, 1);
+    });
+
+    it('should handle broad phase false positives (overlapping AABBs, no collision)', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      
+      // Circle and rectangle with overlapping AABBs but not actually colliding
+      // This forces broad phase to detect them but narrow phase to reject
+      const circle = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 10, y: 0 }
+      });
+      const rect = createRectangle({
+        position: { x: 30, y: 30 },  // Diagonal - AABBs overlap but shapes don't
+        width: 20,
+        height: 20,
+        velocity: { x: -10, y: 0 }
+      });
+      
+      addBody(world, circle);
+      addBody(world, rect);
+      
+      step(world, 1/60);
+      
+      // Broad phase detects AABB overlap, but narrow phase (circle-circle only) returns null
+      // Velocities should be unchanged since narrow phase doesn't support circle-rect yet
+      expect(circle.velocity.x).toBeCloseTo(10, 5);
+      expect(rect.velocity.x).toBeCloseTo(-10, 5);
     });
   });
 });
