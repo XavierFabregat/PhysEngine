@@ -5,6 +5,7 @@ import { addBody } from './body';
 import { createCircle, resetBodyIdCounter } from '../bodies/createCircle';
 import { createRectangle } from '../bodies/createRectangle';
 import { BodyType } from '../types/BodyType';
+import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
 
 describe('step', () => {
   beforeEach(() => {
@@ -346,6 +347,184 @@ describe('step', () => {
   });
 
   describe('collision detection and response', () => {
+    it('should land a falling ball on a static rectangle floor', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const floor = createRectangle({
+        position: { x: 400, y: 580 },
+        width: 800,
+        height: 40,
+        type: BodyType.STATIC,
+      });
+      const ball = createCircle({
+        position: { x: 400, y: 100 },
+        radius: 20,
+        material: { restitution: 0 },
+      });
+      addBody(world, floor);
+      addBody(world, ball);
+
+      for (let i = 0; i < 240; i++) step(world, 1 / 60);
+
+      // Floor top at y = 560: the ball rests on it (small penetration allowed)
+      expect(ball.position.y).toBeGreaterThan(560 - 20 - 0.5);
+      expect(ball.position.y).toBeLessThan(560 - 20 + 2);
+      expect(Math.abs(ball.velocity.y)).toBeLessThan(10);
+    });
+
+    it('should lose bounce height by about e² per floor bounce, never gain it', () => {
+      const apexRatios = (restitution: number) => {
+        const world = createWorld({ gravity: { x: 0, y: 400 } });
+        addBody(world, createRectangle({
+          position: { x: 0, y: 580 },
+          width: 800,
+          height: 40,
+          type: BodyType.STATIC,
+          material: { restitution: 1 },
+        }));
+        const ball = createCircle({ position: { x: 0, y: 100 }, radius: 20, material: { restitution } });
+        addBody(world, ball);
+
+        const heights = [540 - 100];
+        let previousVy = 0;
+        for (let i = 0; i < 60 * 20 && heights.length < 4; i++) {
+          step(world, 1 / 60);
+          if (previousVy < 0 && ball.velocity.y >= 0) heights.push(540 - ball.position.y);
+          previousVy = ball.velocity.y;
+        }
+        return heights.slice(1).map((h, i) => h / heights[i]!);
+      };
+
+      for (const ratio of apexRatios(1)) {
+        expect(ratio).toBeLessThanOrEqual(1);
+        expect(ratio).toBeGreaterThan(0.95);
+      }
+      for (const ratio of apexRatios(0.8)) {
+        expect(ratio).toBeGreaterThan(0.58);
+        expect(ratio).toBeLessThan(0.66); // e² = 0.64
+      }
+    });
+
+    it('should honour the resolver restitution rule set through createWorld', () => {
+      const firstBounceHeight = (restitutionCombine: 'min' | 'max') => {
+        const world = createWorld({
+          gravity: { x: 0, y: 400 },
+          resolver: new ImpulseResolver({ restitutionCombine }),
+        });
+        // Default floor material: restitution 0.2
+        addBody(world, createRectangle({ position: { x: 0, y: 580 }, width: 800, height: 40, type: BodyType.STATIC }));
+        const ball = createCircle({ position: { x: 0, y: 100 }, radius: 20, material: { restitution: 1 } });
+        addBody(world, ball);
+
+        let previousVy = 0;
+        for (let i = 0; i < 600; i++) {
+          step(world, 1 / 60);
+          if (previousVy < 0 && ball.velocity.y >= 0) return 540 - ball.position.y;
+          previousVy = ball.velocity.y;
+        }
+        return 0;
+      };
+
+      // Dropped from 440 px above the resting height
+      expect(firstBounceHeight('min')).toBeLessThan(440 * 0.2 ** 2 * 1.1); // e = 0.2
+      expect(firstBounceHeight('max')).toBeGreaterThan(440 * 0.95); // e = 1
+    });
+
+    it('should bounce off a rectangle with the lower restitution of the pair', () => {
+      const world = createWorld({ gravity: { x: 0, y: 0 } });
+      const wall = createRectangle({
+        position: { x: 100, y: 0 },
+        width: 20,
+        height: 200,
+        type: BodyType.STATIC,
+        material: { restitution: 0.5 },
+      });
+      const ball = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        velocity: { x: 120, y: 0 },
+        material: { restitution: 0.9 },
+      });
+      addBody(world, wall);
+      addBody(world, ball);
+
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      expect(ball.velocity.x).toBeCloseTo(-60, 5);
+      expect(ball.position.x).toBeLessThan(80);
+    });
+
+    it('should slide a ball down a frictionless rotated ramp', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const angle = Math.PI / 6; // right side lower on a y-down screen
+      const ramp = createRectangle({
+        position: { x: 0, y: 0 },
+        width: 400,
+        height: 20,
+        rotation: angle,
+        type: BodyType.STATIC,
+      });
+      // Start resting on the ramp's upper surface, left of centre
+      const up = { x: Math.sin(angle), y: -Math.cos(angle) };
+      const along = { x: Math.cos(angle), y: Math.sin(angle) };
+      const start = { x: -100 * along.x + 20 * up.x, y: -100 * along.y + 20 * up.y };
+      const ball = createCircle({ position: start, radius: 10, material: { restitution: 0 } });
+      addBody(world, ramp);
+      addBody(world, ball);
+
+      for (let i = 0; i < 30; i++) step(world, 1 / 60);
+
+      const travelled = (ball.position.x - start.x) * along.x + (ball.position.y - start.y) * along.y;
+      const heightAboveSurface = (ball.position.x) * up.x + (ball.position.y) * up.y;
+      // No friction: acceleration along the slope is g·sin(30°) = 200 → ~25 px in 0.5 s
+      expect(travelled).toBeGreaterThan(20);
+      expect(travelled).toBeLessThan(35);
+      // Still on the surface (radius 10 + half thickness 10)
+      expect(heightAboveSurface).toBeGreaterThan(19);
+      expect(heightAboveSurface).toBeLessThan(21);
+    });
+
+    it('should let a kinematic rectangle platform lift a resting ball', () => {
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const platform = createRectangle({
+        position: { x: 0, y: 200 },
+        width: 200,
+        height: 20,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 0, y: -50 },
+      });
+      const ball = createCircle({ position: { x: 0, y: 180 }, radius: 10, material: { restitution: 0 } });
+      addBody(world, platform);
+      addBody(world, ball);
+
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      // Platform top rose from 190 to 140; ball rides on it
+      expect(platform.position.y).toBeCloseTo(150, 5);
+      expect(ball.position.y).toBeGreaterThan(130 - 1);
+      expect(ball.position.y).toBeLessThan(130 + 2);
+    });
+
+    it('should use a custom narrow phase from the world config', () => {
+      const calls: string[] = [];
+      const world = createWorld({
+        gravity: { x: 0, y: 0 },
+        narrowPhase: {
+          detect: (a, b) => {
+            calls.push(`${a.id}|${b.id}`);
+            return null;
+          },
+        },
+      });
+      const a = createCircle({ radius: 10 });
+      const b = createCircle({ position: { x: 5, y: 0 }, radius: 10 });
+      addBody(world, a);
+      addBody(world, b);
+
+      step(world, 1 / 60);
+
+      expect(calls).toEqual([`${a.id}|${b.id}`]);
+    });
+
     it('should keep kinematic, static and later dynamic bodies finite after a kinematic touches a static peg', () => {
       // Regression: kinematic-vs-static contacts produced 0/0 impulses, turning
       // both velocities into NaN; the poisoned peg then NaN'd any ball landing on it.

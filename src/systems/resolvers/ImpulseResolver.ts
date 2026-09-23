@@ -2,6 +2,20 @@ import type { CollisionResolver } from '../../types/CollisionResolver.js';
 import type { Body } from '../../types/Body.js';
 import type { Contact } from '../../types/Contact.js';
 import * as Vec2 from '../../core/Vector2.js';
+import { resolveCombineRule, type CombineRule } from '../../types/Material.js';
+
+/**
+ * Options for the impulse resolver.
+ */
+export interface ImpulseResolverOptions {
+  /**
+   * How the two bodies' restitution values combine (default: 'min').
+   * - 'min': the less bouncy body wins; floors must be bouncy for balls to bounce
+   * - 'max': the bouncier body wins; a bouncy ball bounces on any surface
+   * - 'average' | 'multiply' | custom `(a, b) => number`
+   */
+  restitutionCombine?: CombineRule;
+}
 
 /**
  * Impulse-based collision resolver.
@@ -25,6 +39,11 @@ import * as Vec2 from '../../core/Vector2.js';
  * @example
  * const resolver = new ImpulseResolver();
  * const world = createWorld({ resolver });
+ *
+ * // Bouncy balls stay bouncy on any surface
+ * const world = createWorld({
+ *   resolver: new ImpulseResolver({ restitutionCombine: 'max' }),
+ * });
  */
 export class ImpulseResolver implements CollisionResolver {
   /**
@@ -40,6 +59,18 @@ export class ImpulseResolver implements CollisionResolver {
    * Prevents jitter from tiny overlaps.
    */
   private readonly slop = 0.01;
+
+  /** Combines the two bodies' restitution values. */
+  private readonly combineRestitution: (a: number, b: number) => number;
+
+  /**
+   * Creates an impulse resolver.
+   * @param options - Resolver options (restitution combine rule)
+   * @throws Error if `restitutionCombine` is an unknown rule name
+   */
+  constructor(options: ImpulseResolverOptions = {}) {
+    this.combineRestitution = resolveCombineRule(options.restitutionCombine ?? 'min');
+  }
 
   /**
    * Resolves a collision between two bodies.
@@ -122,8 +153,11 @@ export class ImpulseResolver implements CollisionResolver {
     const totalInvMass = bodyA.invMass + bodyB.invMass;
     if (totalInvMass === 0) return;
 
-    // Calculate combined restitution (min gives more realistic behavior)
-    const restitution = Math.min(bodyA.material.restitution, bodyB.material.restitution);
+    // Combined restitution (rule set by the restitutionCombine option)
+    const restitution = this.combineRestitution(
+      bodyA.material.restitution,
+      bodyB.material.restitution
+    );
 
     // Calculate impulse magnitude
     // j = -(1 + e) * vRel · n / (1/mA + 1/mB)

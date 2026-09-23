@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMaterial, DEFAULT_MATERIAL } from './Material';
+import { createMaterial, DEFAULT_MATERIAL, resolveCombineRule } from './Material';
 
 describe('Material', () => {
   describe('DEFAULT_MATERIAL', () => {
@@ -106,3 +106,22 @@ describe('Material', () => {
   });
 });
 
+describe('resolveCombineRule', () => {
+  it.each([
+    ['min', 0.2],
+    ['max', 0.8],
+    ['average', 0.5],
+    ['multiply', 0.16],
+  ] as const)('should resolve %s', (rule, expected) => {
+    expect(resolveCombineRule(rule)(0.8, 0.2)).toBeCloseTo(expected, 10);
+  });
+
+  it('should return a custom function unchanged', () => {
+    const custom = (a: number, b: number) => a - b;
+    expect(resolveCombineRule(custom)).toBe(custom);
+  });
+
+  it('should throw for an unknown rule name', () => {
+    expect(() => resolveCombineRule('median' as never)).toThrow(/Unknown combine rule/);
+  });
+});

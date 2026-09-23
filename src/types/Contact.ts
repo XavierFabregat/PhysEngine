@@ -14,8 +14,9 @@ export interface Contact {
    * Point of contact in world space.
    * 
    * For circle-circle: point on circle A's surface along the collision normal
-   * For circle-rect: closest point on rectangle to circle center
-   * For rect-rect: typically midpoint of overlapping edge/corner
+   * For circle-rect: point on the rectangle boundary closest to the circle
+   *   center (on the nearest face when the center is inside the rectangle)
+   * For rect-rect: not implemented yet (planned: SAT with a contact manifold)
    */
   point: Vector2;
 

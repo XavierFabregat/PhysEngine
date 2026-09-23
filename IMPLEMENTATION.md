@@ -178,7 +178,7 @@ Core physics engine with all essential features for 2D game development.
 
 #### Collision Detection
 - [ ] Broad phase: Spatial hash grid (default) (brute force in place for now)
-- [ ] Narrow phase: SAT for circle-circle, circle-polygon, polygon-polygon (circle-circle done)
+- [ ] Narrow phase: SAT for circle-circle, circle-polygon, polygon-polygon (circle-circle and circle-rectangle done, dispatched by `ShapeDispatchNarrowPhase`)
 - [ ] Contact manifold generation (contact points, normal, penetration depth) (single-point `Contact` done)
 
 #### Collision Response
@@ -221,7 +221,7 @@ Core physics engine with all essential features for 2D game development.
 #### Systems Architecture
 - [x] `Integrator` interface + semi-implicit Euler implementation
 - [ ] `BroadPhase` interface + SpatialHash implementation
-- [ ] `NarrowPhase` interface + SAT implementation
+- [ ] `NarrowPhase` interface + SAT implementation (interface wired into `World`; SAT pending)
 - [ ] `CollisionResolver` interface + Impulse implementation
 - [ ] `defaultSystems` preset
 

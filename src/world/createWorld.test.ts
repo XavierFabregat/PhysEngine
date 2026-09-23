@@ -3,6 +3,7 @@ import { createWorld } from './createWorld';
 import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicitEuler';
 import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver';
+import { ShapeDispatchNarrowPhase } from '../systems/narrowphase/ShapeDispatchNarrowPhase';
 
 describe('createWorld', () => {
   describe('basic creation', () => {
@@ -156,6 +157,19 @@ describe('createWorld', () => {
       const world = createWorld();
       
       expect(world.broadPhase).toBeInstanceOf(BruteForceBroadPhase);
+    });
+
+    it('should use default shape-dispatch narrow phase', () => {
+      expect(createWorld().narrowPhase).toBeInstanceOf(ShapeDispatchNarrowPhase);
+    });
+
+    it('should accept custom narrow phase', () => {
+      const custom = new ShapeDispatchNarrowPhase();
+      expect(createWorld({ narrowPhase: custom }).narrowPhase).toBe(custom);
+    });
+
+    it('should not share default narrow phase between worlds', () => {
+      expect(createWorld().narrowPhase).not.toBe(createWorld().narrowPhase);
     });
 
     it('should use default Impulse resolver', () => {
