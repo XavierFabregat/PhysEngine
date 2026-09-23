@@ -237,6 +237,16 @@ applyTorque(wheel, 50);                                               // for the
 
 Points are in world space and default to the center of mass; static and kinematic bodies ignore these.
 
+### Fast bodies (continuous collision)
+
+A body that moves farther in one step than it and a wall are thick can pass straight through. Mark projectiles as bullets and their path is swept every step instead:
+
+```typescript
+const shot = createCircle({ radius: 3, velocity: { x: 3000, y: 0 }, isBullet: true });
+```
+
+Bullets stop at their first impact and bounce normally on the next step (with the right `impactSpeed` in events). It costs a swept test against nearby bodies per bullet per step, so use it for projectiles, not everything. Polygon bullets are swept as their inscribed circle.
+
 ### Damping
 
 Bodies don't slow down on their own unless you give them damping (rates in 1/s; speed decays as `v₀·e^(−d·t)`):
@@ -394,7 +404,6 @@ See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
 Prioritised from building the Playground demos; details, reasons and "done when" criteria are in [IMPLEMENTATION.md → Next](./IMPLEMENTATION.md#next--lessons-from-the-playground-demos).
-- **Continuous collision** - Fast, small bodies can still tunnel through thin ones
 - **Chain shapes** - Static polylines for terrain and drawn lines
 - **Then** - Spatial broad phase for bodies and queries, sleeping, configurable world scale, constraints
 
