@@ -70,6 +70,8 @@ export {
 } from './world/body.js';
 
 export { step } from './world/step.js';
+export { onCollisionStart, onCollisionActive, onCollisionEnd } from './world/events.js';
+export type { CollisionHandler, CollisionEndHandler, Unsubscribe, CollisionEvents } from './types/Events.js';
 
 // ============================================================
 // INTEGRATORS

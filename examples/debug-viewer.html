@@ -219,6 +219,7 @@
       <label><input type="checkbox" id="showVelocities"> Velocities</label>
       <label><input type="checkbox" id="showCenterOfMass"> Center of Mass</label>
       <label><input type="checkbox" id="showIds"> Body IDs</label>
+      <label><input type="checkbox" id="showContacts"> Contacts</label>
     </div>
 
     <div class="panel" id="rotation-panel" style="display: none;">
@@ -240,6 +241,8 @@
       <p><strong>Bodies:</strong> <span class="value" id="bodyCount">0</span></p>
       <p><strong>Dynamic:</strong> <span class="value" id="dynamicCount">0</span></p>
       <p><strong>Static:</strong> <span class="value" id="staticCount">0</span></p>
+      <p><strong>Collisions started:</strong> <span class="value" id="collisionCount">0</span></p>
+      <p><strong>Touching now:</strong> <span class="value" id="touchingCount">0</span></p>
       <p><strong>Time:</strong> <span class="value" id="time">0.00</span>s</p>
     </div>
   </div>
@@ -285,6 +288,7 @@
       getBodyCount,
       getBodies,
       step,
+      onCollisionStart,
       updateBodyAABB,
       debugDraw,
       BodyType,
@@ -299,6 +303,7 @@
 
     // Create physics world
     let world = createWorld({ gravity: { x: 0, y: 400 } });
+    let collisionCount = 0;
     let selectedBody = null;
     let isPlaying = false;
     let animationId = null;
@@ -328,6 +333,9 @@
     // Initialize scene
     function initializeScene() {
       world = createWorld({ gravity: { x: 0, y: 400 } });
+      collisionCount = 0;
+      // Collision events: count every new contact
+      onCollisionStart(world, () => { collisionCount++; });
       isPlaying = false;
       document.getElementById('play-pause').textContent = '▶️ Play Physics';
       document.getElementById('play-pause').classList.add('primary');
@@ -685,6 +693,8 @@
     function updateInfo() {
       const bodies = getBodies(world);
       document.getElementById('bodyCount').textContent = getBodyCount(world);
+      document.getElementById('collisionCount').textContent = collisionCount;
+      document.getElementById('touchingCount').textContent = world.contacts.length;
       document.getElementById('dynamicCount').textContent = 
         bodies.filter(b => b.type === BodyType.DYNAMIC).length;
       document.getElementById('staticCount').textContent = 
@@ -733,7 +743,8 @@
         showAABBs: document.getElementById('showAABBs').checked,
         showVelocities: document.getElementById('showVelocities').checked,
         showCenterOfMass: document.getElementById('showCenterOfMass').checked,
-        showIds: document.getElementById('showIds').checked
+        showIds: document.getElementById('showIds').checked,
+        showContacts: document.getElementById('showContacts').checked
       };
 
       debugDraw(world, renderer, options);

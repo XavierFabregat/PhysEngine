@@ -93,5 +93,8 @@ export interface DebugDrawOptions {
 
   /** Draw body IDs as text (default: false; requires renderer.drawText) */
   showIds?: boolean;
+
+  /** Draw the last step's contact points and normals (default: false) */
+  showContacts?: boolean;
 }
 

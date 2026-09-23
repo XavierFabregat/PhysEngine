@@ -8,6 +8,7 @@ import { SemiImplicitEulerIntegrator } from '../systems/integrators/SemiImplicit
 import { BruteForceBroadPhase } from '../systems/broadphase/BruteForce.js';
 import { ShapeDispatchNarrowPhase } from '../systems/narrowphase/ShapeDispatchNarrowPhase.js';
 import { ImpulseResolver } from '../systems/resolvers/ImpulseResolver.js';
+import { createCollisionEvents } from './events.js';
 
 /**
  * Configuration for creating a physics world.
@@ -109,6 +110,8 @@ export const createWorld = (config: WorldConfig = {}): World => {
     broadPhase,
     narrowPhase,
     resolver,
+    contacts: [],
+    events: createCollisionEvents(),
   };
 };
 
