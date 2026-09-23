@@ -1,7 +1,7 @@
 // Lidar Rover: a top-down robot scans its surroundings with 180 raycasts a
 // frame and builds a fading point-cloud map.
 // Uses: raycast as a sensor (with a predicate filter), zero gravity,
-// forces on a dynamic body, pushable crates.
+// forces on a dynamic body, linear/angular damping, pushable crates.
 import {
   createWorld,
   createCircle,
@@ -17,9 +17,9 @@ const RAYS = 180;
 const RANGE = 330;
 const MAP_POINTS = 7000;
 const THRUST = 900; // px/s² of drive acceleration
-// The engine has no damping yet, so the demo applies friction-like drag itself
-const DRAG = 0.9;
-const CRATE_DRAG = 0.95;
+// Damping rates in 1/s (top speed ≈ THRUST / ROVER_DAMPING ≈ 150 px/s)
+const ROVER_DAMPING = 6;
+const CRATE_DAMPING = 3;
 
 export default {
   id: 'lidar',
@@ -30,7 +30,7 @@ export default {
     'Every frame the rover casts 180 rays; hits leave fading dots on the map.',
     'Turn off "Show world" to navigate by lidar alone. Crates can be pushed.',
   ],
-  features: ['raycast ×180 / frame', 'Query filters', 'Zero gravity', 'Forces', 'Pushable bodies'],
+  features: ['raycast ×180 / frame', 'Query filters', 'Zero gravity', 'Forces', 'Damping', 'Pushable bodies'],
   controls: [
     { id: 'world', label: 'Show world', kind: 'toggle', checked: true },
     { id: 'rays', label: 'Show rays', kind: 'toggle', checked: true },
@@ -65,20 +65,26 @@ export default {
     addBody(world, createPolygon({ position: { x: 820, y: 170 }, vertices: [{ x: -50, y: 30 }, { x: 50, y: 30 }, { x: 0, y: -40 }], type: BodyType.STATIC, rotation: 0.3 }));
     addBody(world, createPolygon({ position: { x: 180, y: 300 }, vertices: [0, 1, 2, 3, 4, 5].map((k) => ({ x: Math.cos(k * 1.047) * 34, y: Math.sin(k * 1.047) * 34 })), type: BodyType.STATIC }));
     // Pushable crates
-    const crates = [];
     for (let i = 0; i < 6; i++) {
-      const crate = createRectangle({
+      addBody(world, createRectangle({
         position: { x: 420 + random() * 180, y: 230 + random() * 160 },
         width: 30 + random() * 20,
         height: 30 + random() * 20,
         rotation: random() * 3,
         material: { friction: 0.3, restitution: 0.1 },
+        linearDamping: CRATE_DAMPING,
+        angularDamping: CRATE_DAMPING,
         userData: { kind: 'crate' },
-      });
-      addBody(world, crate);
-      crates.push(crate);
+      }));
     }
-    const rover = createCircle({ position: { x: 90, y: 90 }, radius: 15, material: { friction: 0.2, restitution: 0.1 }, userData: { kind: 'rover' } });
+    const rover = createCircle({
+      position: { x: 90, y: 90 },
+      radius: 15,
+      material: { friction: 0.2, restitution: 0.1 },
+      linearDamping: ROVER_DAMPING,
+      angularDamping: ROVER_DAMPING,
+      userData: { kind: 'rover' },
+    });
     addBody(world, rover);
 
     const onKey = (e) => {
@@ -145,12 +151,6 @@ export default {
         const dir = driveDirection();
         rover.force = { x: dir.x * THRUST * rover.mass, y: dir.y * THRUST * rover.mass };
         stepWorld(world, before);
-        rover.velocity = { x: rover.velocity.x * DRAG, y: rover.velocity.y * DRAG };
-        rover.angularVelocity *= DRAG;
-        for (const c of crates) {
-          c.velocity = { x: c.velocity.x * CRATE_DRAG, y: c.velocity.y * CRATE_DRAG };
-          c.angularVelocity *= CRATE_DRAG;
-        }
 
         scan = doScan();
         for (const { hit } of scan) {

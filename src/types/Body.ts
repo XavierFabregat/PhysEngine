@@ -68,6 +68,23 @@ export interface Body {
   torque: number;
 
   // ============================================================
+  // DAMPING
+  // ============================================================
+
+  /**
+   * Linear damping rate in 1/s (default 0 = none). With no forces, speed
+   * decays as v(t) = v₀·e^(−linearDamping·t): 1 halves the speed about every
+   * 0.7 s. Models air or ground drag; applied to dynamic bodies only.
+   */
+  linearDamping?: number;
+
+  /**
+   * Angular damping rate in 1/s (default 0 = none): ω(t) = ω₀·e^(−angularDamping·t).
+   * Use it to stop spinning bodies and rolling balls from turning forever.
+   */
+  angularDamping?: number;
+
+  // ============================================================
   // MASS PROPERTIES
   // ============================================================
 

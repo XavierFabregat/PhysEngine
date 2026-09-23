@@ -5,7 +5,7 @@ import { createMaterial } from '../types/Material.js';
 import { calculateCircleMass, calculateCircleInertia } from './utils.js';
 import { generateBodyId } from './idGenerator.js';
 import { computeShapeAABB } from './aabb.js';
-import { assertPositiveFinite } from './validate.js';
+import { assertPositiveFinite, assertNonNegativeFinite } from './validate.js';
 
 /**
  * Configuration for creating a circle body.
@@ -47,6 +47,12 @@ export interface CircleConfig {
   /** Use continuous collision detection? (default: false) */
   isBullet?: boolean;
 
+  /** Linear damping in 1/s: speed decays as e^(−d·t) (default: 0) */
+  linearDamping?: number;
+
+  /** Angular damping in 1/s: spin decays as e^(−d·t) (default: 0) */
+  angularDamping?: number;
+
   /** Custom user data */
   userData?: unknown;
 }
@@ -87,8 +93,13 @@ export const createCircle = (config: CircleConfig): Body => {
     collidesWith = 0xffffffff,
     isSensor = false,
     isBullet = false,
+    linearDamping = 0,
+    angularDamping = 0,
     userData,
   } = config;
+
+  assertNonNegativeFinite('createCircle', 'linearDamping', linearDamping);
+  assertNonNegativeFinite('createCircle', 'angularDamping', angularDamping);
 
   assertPositiveFinite('createCircle', 'radius', radius);
 
@@ -137,6 +148,8 @@ export const createCircle = (config: CircleConfig): Body => {
     isSensor,
     isAwake: true,
     isBullet,
+    linearDamping,
+    angularDamping,
     userData,
   };
 };

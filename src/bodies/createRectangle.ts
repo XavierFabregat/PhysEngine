@@ -5,7 +5,7 @@ import { createMaterial } from '../types/Material.js';
 import { calculateRectangleMass, calculateRectangleInertia } from './utils.js';
 import { generateBodyId } from './idGenerator.js';
 import { computeShapeAABB } from './aabb.js';
-import { assertPositiveFinite } from './validate.js';
+import { assertPositiveFinite, assertNonNegativeFinite } from './validate.js';
 
 /**
  * Configuration for creating a rectangle body.
@@ -49,6 +49,12 @@ export interface RectangleConfig {
 
   /** Use continuous collision detection? (default: false) */
   isBullet?: boolean;
+
+  /** Linear damping in 1/s: speed decays as e^(−d·t) (default: 0) */
+  linearDamping?: number;
+
+  /** Angular damping in 1/s: spin decays as e^(−d·t) (default: 0) */
+  angularDamping?: number;
 
   /** Custom user data */
   userData?: unknown;
@@ -123,8 +129,13 @@ export const createRectangle = (config: RectangleConfig): Body => {
     collidesWith = 0xffffffff,
     isSensor = false,
     isBullet = false,
+    linearDamping = 0,
+    angularDamping = 0,
     userData,
   } = config;
+
+  assertNonNegativeFinite('createRectangle', 'linearDamping', linearDamping);
+  assertNonNegativeFinite('createRectangle', 'angularDamping', angularDamping);
 
   assertPositiveFinite('createRectangle', 'width', width);
   assertPositiveFinite('createRectangle', 'height', height);
@@ -178,6 +189,8 @@ export const createRectangle = (config: RectangleConfig): Body => {
     isSensor,
     isAwake: true,
     isBullet,
+    linearDamping,
+    angularDamping,
     userData,
   };
 };

@@ -328,4 +328,49 @@ describe('SemiImplicitEulerIntegrator', () => {
       expect(body.velocity).toEqual({ x: 3, y: 14 });
     });
   });
+
+  describe('damping', () => {
+    const coast = (dt: number, seconds: number, config: Parameters<typeof createCircle>[0]) => {
+      const body = createCircle(config);
+      for (let i = 0; i < Math.round(seconds / dt); i++) integrator.integrate(body, dt, { x: 0, y: 0 });
+      return body;
+    };
+
+    it('should decay speed exactly as v0·e^(-d·t), independent of the time step', () => {
+      for (const dt of [1 / 60, 1 / 240]) {
+        const body = coast(dt, 1, { radius: 5, velocity: { x: 300, y: -100 }, linearDamping: 2 });
+        expect(body.velocity.x).toBeCloseTo(300 * Math.exp(-2), 10);
+        expect(body.velocity.y).toBeCloseTo(-100 * Math.exp(-2), 10);
+      }
+    });
+
+    it('should decay spin as ω0·e^(-d·t) and leave linear velocity alone', () => {
+      const body = coast(1 / 60, 2, { radius: 5, velocity: { x: 50, y: 0 }, angularVelocity: 10, angularDamping: 1.5 });
+      expect(body.angularVelocity).toBeCloseTo(10 * Math.exp(-3), 10);
+      expect(body.velocity.x).toBe(50);
+    });
+
+    it('should reach terminal velocity g/d under gravity', () => {
+      const body = createCircle({ radius: 5, linearDamping: 2 });
+      const dt = 1 / 240;
+      for (let i = 0; i < 240 * 10; i++) integrator.integrate(body, dt, { x: 0, y: 400 }); // 10 s = 20 time constants
+      // Discrete fixed point: g·dt·q / (1 - q) with q = e^(-d·dt), which tends to g/d as dt → 0
+      const q = Math.exp(-2 * dt);
+      expect(body.velocity.y).toBeCloseTo((400 * dt * q) / (1 - q), 6);
+      expect(Math.abs(body.velocity.y - 400 / 2)).toBeLessThan(200 * 0.005);
+    });
+
+    it('should not damp kinematic bodies', () => {
+      const body = createCircle({ radius: 5, type: BodyType.KINEMATIC, velocity: { x: 50, y: 0 }, linearDamping: 5 });
+      integrator.integrate(body, 1, { x: 0, y: 0 });
+      expect(body.velocity.x).toBe(50);
+    });
+
+    it('should treat missing damping fields as 0 (hand-built bodies)', () => {
+      const body = createCircle({ radius: 5, velocity: { x: 50, y: 0 } });
+      delete (body as { linearDamping?: number }).linearDamping;
+      integrator.integrate(body, 1 / 60, { x: 0, y: 0 });
+      expect(body.velocity.x).toBe(50);
+    });
+  });
 });

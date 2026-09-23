@@ -389,6 +389,21 @@ describe('step', () => {
       });
     });
 
+    it('should bring a damped ball rolling on flat ground to rest', () => {
+      const world = createWorld();
+      addBody(world, createRectangle({ position: { x: 0, y: 580 }, width: 8000, height: 40, type: BodyType.STATIC }));
+      const damped = createCircle({ position: { x: 0, y: 540 }, radius: 20, velocity: { x: 300, y: 0 }, linearDamping: 1, angularDamping: 1 });
+      const undamped = createCircle({ position: { x: 0, y: 440 }, radius: 20, velocity: { x: 300, y: 0 }, layer: 2, collidesWith: 1 });
+      addBody(world, damped);
+      addBody(world, undamped);
+
+      for (let i = 0; i < 60 * 8; i++) step(world, 1 / 60);
+
+      // Without damping a rolling ball never stops (no rolling resistance)
+      expect(Math.abs(damped.velocity.x)).toBeLessThan(1);
+      expect(Math.abs(undamped.velocity.x)).toBeGreaterThan(100);
+    });
+
     describe('rotation and friction', () => {
       const g = 400;
       const theta = Math.PI / 6; // 30°

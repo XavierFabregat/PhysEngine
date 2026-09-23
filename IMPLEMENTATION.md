@@ -162,7 +162,7 @@ Suggested order: **1 → 2 → 4 → 3 → 5 → 6**, with 10–13 alongside whi
 
 #### Tier 1: small, directly demanded
 
-1. **Damping** — `linearDamping` and `angularDamping` per body, optionally rolling resistance.
+1. ✅ **Damping** — `linearDamping` and `angularDamping` per body (done; exact exponential decay). Rolling resistance still open.
    - *Why:* nothing ever slows down on its own. `lidar.js` multiplies the rover's and crates' velocities by 0.9/0.95 every frame by hand; rolling balls in Ramp Sketch roll forever on flat ground. Blocks top-down games (pool, racing, space).
    - *Done when:* a body with damping d loses speed as `v·e^(−d·t)` (tested against the analytic curve); the Lidar demo drops its manual drag.
 2. **Collision strength in contacts and events** — `normalImpulse`, `tangentImpulse` per contact point and the pair's `impactSpeed`, passed to `onCollisionStart`/`onCollisionActive`.
