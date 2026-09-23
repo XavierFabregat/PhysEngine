@@ -386,6 +386,45 @@ describe('ImpulseResolver', () => {
       // Neither should move (both invMass = 0)
       expect(staticA.position).toEqual(origPosA);
       expect(staticB.position).toEqual(origPosB);
+      // Velocities must stay finite (previously 0/0 made them NaN)
+      expect(staticA.velocity).toEqual({ x: 0, y: 0 });
+      expect(staticB.velocity).toEqual({ x: 0, y: 0 });
+    });
+
+    it('should leave kinematic and static bodies untouched when they meet', () => {
+      const kinematic = createCircle({
+        position: { x: 0, y: 0 },
+        radius: 10,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 50, y: 0 }
+      });
+      const staticBody = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        type: BodyType.STATIC
+      });
+      const contact: Contact = { point: { x: 10, y: 0 }, normal: { x: 1, y: 0 }, depth: 5 };
+
+      resolver.resolve(kinematic, staticBody, contact);
+
+      expect(kinematic.velocity).toEqual({ x: 50, y: 0 });
+      expect(staticBody.velocity).toEqual({ x: 0, y: 0 });
+    });
+
+    it('should leave two approaching kinematic bodies untouched', () => {
+      const a = createCircle({ radius: 10, type: BodyType.KINEMATIC, velocity: { x: 50, y: 0 } });
+      const b = createCircle({
+        position: { x: 15, y: 0 },
+        radius: 10,
+        type: BodyType.KINEMATIC,
+        velocity: { x: -50, y: 0 }
+      });
+      const contact: Contact = { point: { x: 10, y: 0 }, normal: { x: 1, y: 0 }, depth: 5 };
+
+      resolver.resolve(a, b, contact);
+
+      expect(a.velocity).toEqual({ x: 50, y: 0 });
+      expect(b.velocity).toEqual({ x: -50, y: 0 });
     });
   });
 

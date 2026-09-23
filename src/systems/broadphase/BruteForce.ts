@@ -44,8 +44,11 @@ export class BruteForceBroadPhase implements BroadPhase {
         // Type guard - should never happen but TypeScript needs it
         if (!bodyA || !bodyB) continue;
 
-        // Skip if both are static (static bodies don't collide with each other)
-        if (bodyA.type === 'static' && bodyB.type === 'static') {
+        // Only pairs with at least one dynamic body can respond to a collision.
+        // Static/kinematic bodies have infinite mass, so static-static,
+        // static-kinematic and kinematic-kinematic pairs are skipped
+        // (same rule as Box2D).
+        if (bodyA.type !== 'dynamic' && bodyB.type !== 'dynamic') {
           continue;
         }
 

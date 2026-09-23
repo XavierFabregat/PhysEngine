@@ -346,6 +346,35 @@ describe('step', () => {
   });
 
   describe('collision detection and response', () => {
+    it('should keep kinematic, static and later dynamic bodies finite after a kinematic touches a static peg', () => {
+      // Regression: kinematic-vs-static contacts produced 0/0 impulses, turning
+      // both velocities into NaN; the poisoned peg then NaN'd any ball landing on it.
+      const world = createWorld({ gravity: { x: 0, y: 400 } });
+      const peg = createCircle({ position: { x: 0, y: 100 }, radius: 10, type: BodyType.STATIC });
+      const sweeper = createCircle({
+        position: { x: -30, y: 100 },
+        radius: 5,
+        type: BodyType.KINEMATIC,
+        velocity: { x: 60, y: 0 },
+      });
+      addBody(world, peg);
+      addBody(world, sweeper);
+
+      for (let i = 0; i < 30; i++) step(world, 1 / 60);
+
+      expect(peg.velocity).toEqual({ x: 0, y: 0 });
+      expect(sweeper.velocity).toEqual({ x: 60, y: 0 });
+      expect(sweeper.position.x).toBeCloseTo(0, 10); // passes through the peg unaffected
+
+      const ball = createCircle({ position: { x: 0, y: 40 }, radius: 8 });
+      addBody(world, ball);
+      for (let i = 0; i < 60; i++) step(world, 1 / 60);
+
+      expect(Number.isFinite(ball.position.x)).toBe(true);
+      expect(Number.isFinite(ball.position.y)).toBe(true);
+      expect(ball.position.y).toBeLessThan(100); // resting on top of the peg, not NaN or through it
+    });
+
     it('should call broad phase and execute collision loop', () => {
       const world = createWorld({ gravity: { x: 0, y: 0 } });
       

@@ -148,6 +148,15 @@ describe('BruteForceBroadPhase', () => {
       expect(pairs[0]).toEqual([0, 1]);
     });
 
+    it('should skip static-kinematic and kinematic-kinematic pairs', () => {
+      const staticBody = createCircle({ radius: 10, type: BodyType.STATIC });
+      const kinematicA = createCircle({ position: { x: 5, y: 0 }, radius: 10, type: BodyType.KINEMATIC });
+      const kinematicB = createCircle({ position: { x: 8, y: 0 }, radius: 10, type: BodyType.KINEMATIC });
+
+      // All three overlap, but none can respond to a collision
+      expect(broadPhase.getPairs([staticBody, kinematicA, kinematicB])).toEqual([]);
+    });
+
     it('should find kinematic-dynamic pairs', () => {
       const kinematicBody = createCircle({
         position: { x: 0, y: 0 },
