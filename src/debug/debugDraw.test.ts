@@ -5,6 +5,7 @@ import { createWorld } from '../world/createWorld';
 import { addBody } from '../world/body';
 import { createCircle, resetBodyIdCounter } from '../bodies/createCircle';
 import { createRectangle } from '../bodies/createRectangle';
+import { createChain } from '../bodies/createChain';
 
 type Call = [method: string, ...args: unknown[]];
 
@@ -119,6 +120,20 @@ describe('debugDraw', () => {
       ['drawLine', { x: 10, y: 20 }, { x: 10, y: 32 }, '#ffff00'],
       ['drawPoint', { x: 8, y: 20 }, '#ffff00'],
       ['drawPoint', { x: 12, y: 20 }, '#ffff00'],
+    ]);
+  });
+
+  it('should draw a chain as connected lines, closing loops', () => {
+    const world = createWorld();
+    addBody(world, createChain({ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }], loop: true }));
+    const renderer = createRecorder();
+
+    debugDraw(world, renderer);
+
+    expect(renderer.calls.filter(([m]) => m === 'drawLine')).toEqual([
+      ['drawLine', { x: 0, y: 0 }, { x: 10, y: 0 }, '#888888'],
+      ['drawLine', { x: 10, y: 0 }, { x: 10, y: 10 }, '#888888'],
+      ['drawLine', { x: 10, y: 10 }, { x: 0, y: 0 }, '#888888'],
     ]);
   });
 });

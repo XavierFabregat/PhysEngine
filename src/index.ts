@@ -26,7 +26,7 @@ export type { AABB as AABBType } from './core/AABB.js';
 export type { Body } from './types/Body.js';
 export type { BodyType as BodyTypeEnum } from './types/BodyType.js';
 export type { Material } from './types/Material.js';
-export type { Shape, CircleShape, RectangleShape, PolygonShape } from './types/Shape.js';
+export type { Shape, CircleShape, RectangleShape, PolygonShape, ChainShape } from './types/Shape.js';
 export type { World } from './types/World.js';
 export type { Integrator } from './types/Integrator.js';
 export type { BroadPhase, BodyPair } from './types/BroadPhase.js';
@@ -49,6 +49,9 @@ export type { RectangleConfig } from './bodies/createRectangle.js';
 
 export { createPolygon } from './bodies/createPolygon.js';
 export type { PolygonConfig } from './bodies/createPolygon.js';
+
+export { createChain } from './bodies/createChain.js';
+export type { ChainConfig } from './bodies/createChain.js';
 
 export { computeShapeAABB, updateBodyAABB } from './bodies/aabb.js';
 
@@ -106,6 +109,7 @@ export { detectCircleCircle } from './systems/narrowphase/circleCircle.js';
 export { detectCircleRectangle } from './systems/narrowphase/circleRectangle.js';
 export { detectCirclePolygon } from './systems/narrowphase/circlePolygon.js';
 export { detectPolygonPolygon } from './systems/narrowphase/polygonPolygon.js';
+export { detectCircleChain, detectPolygonChain } from './systems/narrowphase/chain.js';
 export { ShapeDispatchNarrowPhase } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
 export type { ShapeDetector } from './systems/narrowphase/ShapeDispatchNarrowPhase.js';
 
@@ -133,7 +137,7 @@ export { createMaterial, DEFAULT_MATERIAL, resolveCombineRule } from './types/Ma
 export type { CombineRule } from './types/Material.js';
 
 // Shape type guards
-export { isCircle, isRectangle, isPolygon } from './types/Shape.js';
+export { isCircle, isRectangle, isPolygon, isChain } from './types/Shape.js';
 
 // Body type helpers
 export { isStatic, isDynamic, isKinematic, shouldCollide } from './types/Body.js';

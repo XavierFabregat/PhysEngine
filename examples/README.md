@@ -23,7 +23,7 @@ npx serve .        # then open http://localhost:3000/examples/demos/
 
 - **Knockdown**: slingshot against box towers. The aim preview uses `raycast` along the trajectory; scoring uses `onCollisionStart` with the engine's `contact.impactSpeed`.
 - **Galton Board**: balls rain through a peg lattice into sensor bins; the histogram is compared with the binomial curve.
-- **Ramp Sketch**: draw ramps with the pointer (strokes become static boxes) to roll a ball into a sensor cup; level 3 has a kinematic paddle.
+- **Ramp Sketch**: draw ramps with the pointer (each stroke becomes one `createChain` polyline) to roll a ball into a sensor cup; level 3 has a kinematic paddle.
 - **Lidar Rover**: a top-down rover casts 180 rays a frame and builds a point-cloud map; the rover and crates use `linearDamping`/`angularDamping` so they coast to a stop.
 
 The page loads `physengine` through an import map pointing at `../../dist/index.js`; point it at `https://cdn.jsdelivr.net/npm/@xavifabregat/physengine@0.4.0/+esm` (the whole package as one bundled module) to run the demos without a local build.
