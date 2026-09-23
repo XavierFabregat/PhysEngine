@@ -239,7 +239,8 @@ describe('ImpulseResolver', () => {
         depth: 5
       };
 
-      resolver.resolve(bouncyBall, wall, contact);
+      // 10 px/s is at the default bounce threshold; disable it to test e alone
+      new ImpulseResolver({ restitutionThreshold: 0 }).resolve(bouncyBall, wall, contact);
 
       // With perfect restitution and static wall, ball should reverse
       expect(bouncyBall.velocity.x).toBeLessThan(0);
@@ -382,6 +383,86 @@ describe('ImpulseResolver', () => {
     it('should reject a non-integer or non-positive iteration count', () => {
       expect(() => new ImpulseResolver({ iterations: 0 })).toThrow(RangeError);
       expect(() => new ImpulseResolver({ iterations: 2.5 })).toThrow(RangeError);
+    });
+  });
+
+  describe('restitution threshold', () => {
+    const bounceSpeed = (resolverUnderTest: ImpulseResolver, approach: number) => {
+      const ball = createCircle({ radius: 10, velocity: { x: approach, y: 0 }, material: { restitution: 1 } });
+      const wall = createCircle({ position: { x: 19.9, y: 0 }, radius: 10, type: BodyType.STATIC, material: { restitution: 1 } });
+      resolverUnderTest.resolve(ball, wall, { point: { x: 10, y: 0 }, normal: { x: 1, y: 0 }, depth: 0.1 });
+      return -ball.velocity.x;
+    };
+
+    it('should not bounce approaches slower than the threshold (default 10)', () => {
+      expect(bounceSpeed(new ImpulseResolver(), 6)).toBeCloseTo(0, 10);
+      expect(bounceSpeed(new ImpulseResolver(), 30)).toBeCloseTo(30, 10);
+    });
+
+    it('should honour a custom threshold', () => {
+      expect(bounceSpeed(new ImpulseResolver({ restitutionThreshold: 50 }), 30)).toBeCloseTo(0, 10);
+      expect(bounceSpeed(new ImpulseResolver({ restitutionThreshold: 0 }), 6)).toBeCloseTo(6, 10);
+    });
+
+    it('should reject a negative or non-finite threshold', () => {
+      expect(() => new ImpulseResolver({ restitutionThreshold: -1 })).toThrow(RangeError);
+      expect(() => new ImpulseResolver({ restitutionThreshold: NaN })).toThrow(RangeError);
+    });
+  });
+
+  describe('batch solving', () => {
+    it('should skip positional correction for contacts that are bouncing apart', () => {
+      const ball = createCircle({ position: { x: 0, y: -8 }, radius: 10, velocity: { x: 0, y: 200 }, material: { restitution: 1 } });
+      const floor = createRectangle({ position: { x: 0, y: 10 }, width: 400, height: 20, type: BodyType.STATIC, material: { restitution: 1 } });
+      const pairs = [{ bodyA: ball, bodyB: floor, contact: { point: { x: 0, y: 0 }, normal: { x: 0, y: 1 }, depth: 2 } }];
+
+      resolver.solveVelocities(pairs, 1 / 60);
+      resolver.correctPositions(pairs);
+
+      expect(ball.velocity.y).toBeCloseTo(-200, 8);
+      expect(ball.position.y).toBe(-8); // not lifted: the bounce separates it
+    });
+
+    it('should let a speculative point close its gap but not overshoot', () => {
+      const dt = 1 / 60;
+      const ball = createCircle({ position: { x: 0, y: -12 }, radius: 10, velocity: { x: 0, y: 300 } });
+      const floor = createRectangle({ position: { x: 0, y: 10 }, width: 400, height: 20, type: BodyType.STATIC });
+      // Gap of 2 px: allowed approach speed is 2 / dt = 120
+      const contact = { point: { x: 0, y: 0 }, points: [{ x: 0, y: 0 }], pointDepths: [-2], normal: { x: 0, y: 1 }, depth: 0 };
+
+      resolver.solveVelocities([{ bodyA: ball, bodyB: floor, contact }], dt);
+
+      expect(ball.velocity.y).toBeCloseTo(2 / dt, 8);
+    });
+
+    it('should ignore speculative points when no time step is given', () => {
+      const ball = createCircle({ position: { x: 0, y: -12 }, radius: 10, velocity: { x: 0, y: 300 } });
+      const floor = createRectangle({ position: { x: 0, y: 10 }, width: 400, height: 20, type: BodyType.STATIC });
+      const contact = { point: { x: 0, y: 0 }, points: [{ x: 0, y: 0 }], pointDepths: [-2], normal: { x: 0, y: 1 }, depth: 0 };
+
+      resolver.resolve(ball, floor, contact);
+
+      expect(ball.velocity.y).toBe(300);
+    });
+
+    it('should solve several contacts together (a box pressed between two others)', () => {
+      const noGravityStack = () => {
+        const left = createRectangle({ position: { x: -20, y: 0 }, width: 20, height: 20, velocity: { x: 50, y: 0 }, material: { restitution: 0, friction: 0 } });
+        const middle = createRectangle({ position: { x: 0, y: 0 }, width: 20, height: 20, material: { restitution: 0, friction: 0 } });
+        const right = createRectangle({ position: { x: 20, y: 0 }, width: 20, height: 20, velocity: { x: -50, y: 0 }, material: { restitution: 0, friction: 0 } });
+        const edge = (x: number) => ({ point: { x, y: 0 }, points: [{ x, y: -10 }, { x, y: 10 }], normal: { x: 1, y: 0 }, depth: 0.1 });
+        return { left, middle, right, pairs: [
+          { bodyA: left, bodyB: middle, contact: edge(-10) },
+          { bodyA: middle, bodyB: right, contact: edge(10) },
+        ] };
+      };
+      const { left, middle, right, pairs } = noGravityStack();
+
+      resolver.solveVelocities(pairs, 1 / 60);
+
+      // Perfectly inelastic, equal masses, symmetric: everything stops
+      // (a single pass would leave the outer boxes at ~12 px/s)
+      for (const b of [left, middle, right]) expect(Math.abs(b.velocity.x)).toBeLessThan(1e-3);
     });
   });
 
@@ -738,7 +819,7 @@ describe('ImpulseResolver', () => {
           depth: 5
         };
 
-        resolver.resolve(ball, wall, contact);
+        new ImpulseResolver({ restitutionThreshold: 0 }).resolve(ball, wall, contact);
         return Math.abs(ball.velocity.x);
       };
 

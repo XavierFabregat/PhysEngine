@@ -31,6 +31,15 @@ export interface Contact {
   points?: readonly Vector2[];
 
   /**
+   * Penetration depth at each of `points` (same order), optional.
+   * Positive = overlapping; negative = a speculative point still this far
+   * above the surface. Solvers let such a point close its gap within the
+   * step but not overshoot, instead of stopping it early. Consumers should
+   * fall back to `depth` for every point when absent.
+   */
+  pointDepths?: readonly number[];
+
+  /**
    * Contact normal vector (unit length).
    * 
    * Points FROM bodyA TO bodyB.

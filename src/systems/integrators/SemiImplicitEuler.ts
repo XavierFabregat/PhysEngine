@@ -35,54 +35,46 @@ export class SemiImplicitEulerIntegrator implements Integrator {
    * @param gravity - Global gravity vector
    */
   integrate(body: Body, dt: number, gravity: Vector2): void {
-    // Skip static bodies (infinite mass, don't move)
-    if (body.type === 'static') {
-      return;
+    this.integrateVelocity(body, dt, gravity);
+    this.integratePosition(body, dt);
+  }
+
+  /**
+   * Velocity half: v += (F/m + g) dt, ω += (τ/I) dt, then clears forces.
+   * Static bodies are skipped; kinematic bodies ignore forces (which are
+   * still cleared so they don't accumulate).
+   *
+   * @param body - The body to integrate (mutated in place)
+   * @param dt - Time step in seconds
+   * @param gravity - Global gravity vector
+   */
+  integrateVelocity(body: Body, dt: number, gravity: Vector2): void {
+    if (body.type === 'static') return;
+
+    if (body.type === 'dynamic') {
+      // a = F/m + g (gravity applied as F = m g), α = τ/I
+      const acceleration = Vec2.add(Vec2.scale(body.force, body.invMass), gravity);
+      body.velocity = Vec2.add(body.velocity, Vec2.scale(acceleration, dt));
+      body.angularVelocity += body.torque * body.invInertia * dt;
     }
 
-    // Kinematic bodies move by velocity only (no forces)
-    if (body.type === 'kinematic') {
-      // Update position from velocity
-      body.position = Vec2.add(body.position, Vec2.scale(body.velocity, dt));
-
-      // Update rotation from angular velocity
-      body.rotation += body.angularVelocity * dt;
-
-      // Forces are ignored, but still cleared so they don't accumulate
-      body.force = { x: 0, y: 0 };
-      body.torque = 0;
-      return;
-    }
-
-    // Dynamic bodies - full physics simulation
-
-    // Apply gravity force (F = m * g)
-    const gravityForce = Vec2.scale(gravity, body.mass);
-    body.force = Vec2.add(body.force, gravityForce);
-
-    // Linear integration
-    // a = F / m (using invMass for efficiency)
-    const acceleration = Vec2.scale(body.force, body.invMass);
-
-    // v = v + a * dt
-    body.velocity = Vec2.add(body.velocity, Vec2.scale(acceleration, dt));
-
-    // p = p + v * dt
-    body.position = Vec2.add(body.position, Vec2.scale(body.velocity, dt));
-
-    // Angular integration
-    // α = τ / I (using invInertia for efficiency)
-    const angularAcceleration = body.torque * body.invInertia;
-
-    // ω = ω + α * dt
-    body.angularVelocity += angularAcceleration * dt;
-
-    // θ = θ + ω * dt
-    body.rotation += body.angularVelocity * dt;
-
-    // Reset forces for next frame (forces are per-frame accumulators)
+    // Forces are per-frame accumulators
     body.force = { x: 0, y: 0 };
     body.torque = 0;
+  }
+
+  /**
+   * Position half: p += v dt, θ += ω dt (with the updated velocities).
+   * Static bodies are skipped.
+   *
+   * @param body - The body to integrate (mutated in place)
+   * @param dt - Time step in seconds
+   */
+  integratePosition(body: Body, dt: number): void {
+    if (body.type === 'static') return;
+
+    body.position = Vec2.add(body.position, Vec2.scale(body.velocity, dt));
+    body.rotation += body.angularVelocity * dt;
   }
 }
 
