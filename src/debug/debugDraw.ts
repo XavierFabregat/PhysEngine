@@ -76,6 +76,12 @@ export const debugDraw = (
           body.shape.radius,
           bodyColor
         );
+        // Radius line along the body's local +x axis, so spin is visible
+        renderer.drawLine(
+          body.position,
+          Vec2.add(body.position, Vec2.rotate({ x: body.shape.radius, y: 0 }, body.rotation)),
+          bodyColor
+        );
       } else if (body.shape.type === 'rectangle') {
         renderer.drawRect(
           body.position.x,

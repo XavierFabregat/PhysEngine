@@ -182,9 +182,9 @@ Core physics engine with all essential features for 2D game development.
 - [x] Contact manifold generation (contact points, normal, penetration depth): 1–2 clipped points for polygon pairs
 
 #### Collision Response
-- [ ] Impulse-based resolver (linear only; no angular response yet)
+- [x] Impulse-based resolver (sequential impulses with angular response; exact 2-point block solve)
 - [x] Position correction for penetration
-- [ ] Friction impulses
+- [x] Friction impulses (Coulomb, configurable `frictionCombine`)
 
 #### Collision Filtering
 - [ ] Layer/mask system for selective collision (`shouldCollide` helper done; applies to sensors too)

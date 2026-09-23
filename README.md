@@ -11,7 +11,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 **Current Version:** 0.2.0  
 **Core Math Layer:** ✅ Complete  
 **Bodies, World & Integration:** ✅ Circles and rectangles, add/remove bodies, `step()` with gravity  
-**Collision Detection & Response:** 🚧 All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase, impulse bounce. No friction or rotational response yet, so tilted boxes stay balanced on a corner
+**Collision Detection & Response:** ✅ All shape pairs (circles, rectangles, convex polygons via SAT); brute-force broad phase; impulses with rotation and Coulomb friction (balls roll, boxes tip and slide). 🚧 Solver stability: resting bodies creep slightly and tall stacks compress
 
 ## Conventions
 
@@ -53,7 +53,7 @@ A 2D physics engine for games and simulations, prioritizing simplicity and exten
 - **Body factories** - `createCircle`, `createRectangle`, `createPolygon` (convex; re-centered on its centroid) (static, dynamic, kinematic), with mass and inertia from shape × density. Invalid sizes or densities throw a `RangeError`.
 - **World** - `createWorld`, `addBody` (rejects duplicate IDs), `removeBody`, `getBody`, `getBodies`, `clear`, `hasBody`
 - **Simulation** - `step(world, dt)`: integrate → refresh AABBs → broad phase → narrow phase → resolve
-- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (restitution with a configurable combine rule + positional correction; sensors detect without responding)
+- **Collisions** - `BruteForceBroadPhase` (AABB + layer filtering), `ShapeDispatchNarrowPhase` (every pair of built-in shapes: circle, rectangle, convex polygon; rectangles and polygons via SAT with a 1–2 point contact manifold; extensible via `register`), `ImpulseResolver` (sequential impulses with rotation and Coulomb friction, configurable restitution/friction combine rules and iterations, positional correction; sensors detect without responding)
 - **Integrator** - `SemiImplicitEulerIntegrator` (symplectic, stable; default). `VerletIntegrator` remains as a deprecated alias.
 - **Collision filtering helpers** - `shouldCollide` (layer/mask; sensors obey the same filtering)
 
@@ -154,6 +154,14 @@ const wedge = createPolygon({
 ```
 
 Convex outlines only (concave or self-intersecting ones throw); either winding is accepted.
+
+### Friction
+
+Friction follows Coulomb's law: surfaces grip until the sideways force exceeds μ × the normal force, then slide. Balls roll, boxes slide or hold on slopes, and tilted boxes tip onto a face. Set `material.friction` per body; choose how two bodies' values combine with `frictionCombine` (default `'average'`):
+
+```typescript
+createWorld({ resolver: new ImpulseResolver({ frictionCombine: 'min' }) }); // ice beats rubber
+```
 
 ### Choosing how bounciness combines
 
@@ -285,8 +293,7 @@ PhysEngine/
 See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for the complete plan.
 
 ### Next Up:
-- **Collision Response** - Friction and rotational (angular) impulses (the 2-point manifold is already produced)
-- **Solver stability** - Iterative contact solving: stacks currently compress a few px per level, and very large mass ratios (≈1000:1) let a heavy body crush a light one
+- **Solver stability** - Split `step()` into integrate velocities → solve all contacts iteratively → integrate positions. Today positions move before contacts fix velocities, so resting bodies creep g·sinθ·dt² per frame on slopes, stacks compress a few px per level, a 3-2-1 box pyramid topples, and very large mass ratios (≈1000:1) let a heavy body crush a light one
 - **Broad phase** - Spatial hash once body counts demand it
 - **Constraints** - Springs, rods, pins
 - **Events** - Collision callbacks

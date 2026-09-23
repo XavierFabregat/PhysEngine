@@ -10,6 +10,14 @@ import { toWorldPolygon, type WorldPolygon } from './polygonGeometry.js';
  */
 const REFERENCE_FACE_TOLERANCE = 0.01;
 
+/**
+ * Clipped points up to this far above the reference face (world units) are
+ * kept in the manifold. Without it a box tilted by a hair touches with one
+ * corner only, and the resolver cannot keep it flat; the kept point only
+ * receives an impulse if it is approaching (same idea as Box2D's linear slop).
+ */
+const CONTACT_MARGIN = 0.5;
+
 interface Separation {
   /** Largest separation found; > 0 means a separating axis exists */
   separation: number;
@@ -74,7 +82,8 @@ const clipSegment = (points: Vector2[], normal: Vector2, offset: number): Vector
  *    preferred on near-ties, for frame-to-frame stability).
  * 3. On the other (incident) polygon, pick the edge most anti-parallel to it.
  * 4. Clip that incident edge to the reference face's side planes; the clipped
- *    points below the reference face are the contact points (1 or 2).
+ *    points below (or within a 0.5-unit margin of) the reference face are
+ *    the contact points (1 or 2).
  *
  * @param bodyA - Rectangle or polygon body
  * @param bodyB - Rectangle or polygon body
@@ -137,17 +146,19 @@ export function detectPolygonPolygon(bodyA: Body, bodyB: Body): Contact | null {
   );
   clipped = clipSegment(clipped, tangent, tangent.x * r2.x + tangent.y * r2.y);
 
-  // Keep the clipped points that are actually below the reference face
+  // Keep the clipped points below (or within CONTACT_MARGIN of) the reference face
   const points: Vector2[] = [];
   let depth = 0;
+  let touching = false;
   for (const p of clipped) {
     const separation = refNormal.x * (p.x - r1.x) + refNormal.y * (p.y - r1.y);
-    if (separation <= 0) {
+    if (separation <= CONTACT_MARGIN) {
       points.push(p);
       depth = Math.max(depth, -separation);
+      if (separation <= 0) touching = true;
     }
   }
-  if (points.length === 0) return null;
+  if (!touching) return null;
 
   // The reference normal points out of the reference polygon, toward the
   // incident one. Contact normals must point from A to B.

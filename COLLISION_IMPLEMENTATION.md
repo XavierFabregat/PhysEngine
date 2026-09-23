@@ -1369,8 +1369,8 @@ bodyA.angularVelocity += angularImpulse * bodyA.invInertia;
 - [x] All shape combinations working (circle, rectangle, convex polygon)
 
 **Phase 4: Full Response**
-- [ ] Impulse with rotation
-- [ ] Friction
+- [x] Impulse with rotation
+- [x] Friction
 - [x] Restitution (bounciness)
 
 **Phase 5: Polish**
